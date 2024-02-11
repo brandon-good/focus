@@ -17,3 +17,9 @@ Run:
 `npm start`
 or
 `npx electronmon .`
+
+# Authors
+- Brandon Good
+- Bennett Brixen
+- Katelyn Rohrer
+- Sean    Eddy
