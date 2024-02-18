@@ -5,6 +5,7 @@ const console = require('console')
 const path = require('node:path')
 const isMac = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
+const isDev = process.env.NODE_ENV !== 'development';
 const util = require('util');
 
 const userdata_dir = app.getPath('userData');
@@ -14,9 +15,9 @@ let install_dir = path.join(app.getPath('home'), 'Focus');
 console.log('default dir: ' + install_dir);
 
 let SONY_RAW_EXTENSION = '.ARW'
-const isDev = process.env.NODE_ENV !== 'development';
 let mainWindow;
 let selectInstallPopup;
+
 function createWindow() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
@@ -62,7 +63,6 @@ function createInstallPopup() {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
 	configureInstallationDirectory();
-
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
@@ -113,6 +113,8 @@ function configureInstallationDirectory() {
 		}
 	});		
 }
+
+// IPC HANDLERS
 
 ipcMain.on('install_directory_selected', (e, { dir,}) => {
   console.log('installation dir: ' + dir)

@@ -15,9 +15,6 @@ function selectInstallDir(event) {
         if (!import_from.canceled) {
             const dir = import_from.filePaths[0];
 						electron.add_focus_to_filepath(dir).then((value) => p_location.innerText = value);
-            //ipcRenderer.send('import_files', {
-            //  dir,
-            //});
           }
         })
 }
