@@ -16,9 +16,10 @@ console.log('default dir: ' + install_dir);
 let SONY_RAW_EXTENSION = '.ARW'
 const isDev = process.env.NODE_ENV !== 'development';
 let mainWindow;
+let selectInstallPopup;
 function createWindow() {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: isDev ? 1600 : 800,
     height: 600,
     webPreferences: {
@@ -38,7 +39,7 @@ function createWindow() {
 
 function createInstallPopup() {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  selectInstallPopup = new BrowserWindow({
     width: isDev ? 1600 : 800,
     height: 600,
     webPreferences: {
@@ -50,10 +51,10 @@ function createInstallPopup() {
 
   // Open the DevTools.
   if (isDev)
-    mainWindow.webContents.openDevTools();
+    selectInstallPopup.webContents.openDevTools();
 
   // and load the index.html of the app.
-  mainWindow.loadFile('select_install_dir.html');
+  selectInstallPopup.loadFile('select_install_dir.html');
 }
 
 // This method will be called when Electron has finished
@@ -105,11 +106,9 @@ function configureInstallationDirectory() {
 	let install_dir_file = path.join(userdata_dir, install_dir_filename);
 	fs.readFile(install_dir_file, (err, content) => {
 		if (err) {
-			// make new window to set location
-			console.log("could not find install location. asking user to select");
 			createInstallPopup();
 		} else {
-			install_dir = content.replace(/(\r\n|\n|\r)/gm, "");
+			install_dir = content.toString().replace(/(\r\n|\n|\r)/gm, "");
 			createWindow();
 		}
 	});		
@@ -120,7 +119,11 @@ ipcMain.on('install_directory_selected', (e, { dir,}) => {
 	install_dir = dir;
 
 	// save to file
+	const install_dir_file = path.join(userdata_dir, install_dir_filename);
+	fs.writeFile(install_dir_file, dir, err => {
+		if (err) console.log("ERROR INITIALIZING USER INSTALL LOCATION");});
 
+	selectInstallPopup.close();
 	createWindow();
 });
 
