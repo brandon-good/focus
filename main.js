@@ -4,11 +4,17 @@ const fs = require('fs');
 const console = require('console')
 const path = require('node:path')
 const isMac = process.platform === 'darwin';
+const isLinux = process.platform === 'linux';
 const util = require('util');
+
+const userdata_dir = app.getPath('userData');
+const install_dir_filename = 'install_directory.txt';
+console.log("user data: " + userdata_dir);
+let install_dir = path.join(app.getPath('home'), 'Focus');
+console.log('default dir: ' + install_dir);
 
 let SONY_RAW_EXTENSION = '.ARW'
 const isDev = process.env.NODE_ENV !== 'development';
-console.log('test')
 let mainWindow;
 function createWindow() {
   // Create the browser window.
@@ -28,21 +34,33 @@ function createWindow() {
 
   // and load the index.html of the app.
   mainWindow.loadFile('index.html');
+}
 
+function createInstallPopup() {
+  // Create the browser window.
+  const mainWindow = new BrowserWindow({
+    width: isDev ? 1600 : 800,
+    height: 600,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: true,
+    }
+  })
 
+  // Open the DevTools.
+  if (isDev)
+    mainWindow.webContents.openDevTools();
 
+  // and load the index.html of the app.
+  mainWindow.loadFile('select_install_dir.html');
 }
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  createWindow()
-  ipcMain.handle('dialog', async (event, method, params) => {
-    const result = await dialog[method](params);
-    return result;
-
-  });
+	configureInstallationDirectory();
 
 
   app.on('activate', function () {
@@ -60,8 +78,6 @@ function copyFiles(srcDir, destDir, files) {
     return copyFilePromise(path.join(srcDir, f), path.join(destDir, f));
   }));
 }
-
-
 
 ipcMain.on('import_files', (e, { src_dir, dest_dir, }) => {
   console.log('src dir: ' + src_dir)
@@ -81,6 +97,42 @@ ipcMain.on('import_files', (e, { src_dir, dest_dir, }) => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', function () {
-  if (!isMac) app.quit()
+  if (!isMac) app.quit();
 })
 
+
+function configureInstallationDirectory() {
+	let install_dir_file = path.join(userdata_dir, install_dir_filename);
+	fs.readFile(install_dir_file, (err, content) => {
+		if (err) {
+			// make new window to set location
+			console.log("could not find install location. asking user to select");
+			createInstallPopup();
+		} else {
+			install_dir = content.replace(/(\r\n|\n|\r)/gm, "");
+			createWindow();
+		}
+	});		
+}
+
+ipcMain.on('install_directory_selected', (e, { dir,}) => {
+  console.log('installation dir: ' + dir)
+	install_dir = dir;
+
+	// save to file
+
+	createWindow();
+});
+
+ipcMain.handle('get_default_install_location', async (event, args) => {
+	return install_dir;
+});
+
+ipcMain.handle('add_focus_to_filepath', async (event, args) => {
+	return path.join(args, 'Focus');
+});
+
+ipcMain.handle('dialog', async (event, method, params) => {
+	const result = await dialog[method](params);
+	return result;
+});
