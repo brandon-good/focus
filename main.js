@@ -108,9 +108,17 @@ function configureInstallationDirectory() {
 			createInstallPopup();
 		} else {
 			install_dir = content.toString().replace(/(\r\n|\n|\r)/gm, "");
+			verifyInstallDirectory();
 			createWindow();
 		}
 	});		
+
+}
+
+function verifyInstallDirectory() {
+	if (fs.existsSync(install_dir)) return;
+	// make directory now
+	fs.mkdirSync(install_dir);
 }
 
 // IPC HANDLERS
@@ -125,6 +133,7 @@ ipcMain.on('install_directory_selected', (e, { dir,}) => {
 		if (err) console.log("ERROR INITIALIZING USER INSTALL LOCATION");});
 
 	selectInstallPopup.close();
+	verifyInstallDirectory();
 	createWindow();
 });
 
