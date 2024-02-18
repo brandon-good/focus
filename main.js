@@ -8,13 +8,12 @@ const isLinux = process.platform === 'linux';
 const isDev = process.env.NODE_ENV !== 'development';
 const util = require('util');
 
+const SONY_RAW_EXTENSION = '.ARW'
+
 const userdata_dir = app.getPath('userData');
 const install_dir_filename = 'install_directory.txt';
-console.log("user data: " + userdata_dir);
 let install_dir = path.join(app.getPath('home'), 'Focus');
-console.log('default dir: ' + install_dir);
 
-let SONY_RAW_EXTENSION = '.ARW'
 let mainWindow;
 let selectInstallPopup;
 
