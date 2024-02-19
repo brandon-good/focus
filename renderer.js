@@ -23,9 +23,6 @@ function importPhotos(event) {
             })
         }
     })
-
-
-
 }
 
 function isARW(file) {

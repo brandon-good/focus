@@ -3,11 +3,12 @@ const { app, BrowserWindow, dialog, ipcMain } = require('electron')
 const fs = require('fs');
 const console = require('console')
 const path = require('node:path')
+const util = require('util');
+//const projects = require('./projects.js');
+
 const isMac = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
 const isDev = process.env.NODE_ENV !== 'development';
-const util = require('util');
-
 const SONY_RAW_EXTENSION = '.ARW'
 
 const userdata_dir = app.getPath('userData');
@@ -17,7 +18,10 @@ let install_dir = path.join(app.getPath('home'), 'Focus');
 let mainWindow;
 let selectInstallPopup;
 
-function createWindow() {
+let user_projects;
+let currently_open_projects = [];
+
+function createMainWindow() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: isDev ? 1600 : 800,
@@ -32,6 +36,8 @@ function createWindow() {
   // Open the DevTools.
   if (isDev)
     mainWindow.webContents.openDevTools();
+
+	loadUserProjects(install_dir);
 
   // and load the index.html of the app.
   mainWindow.loadFile('index.html');
@@ -66,19 +72,47 @@ app.whenReady().then(() => {
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
   })
 })
 
 const copyFilePromise = util.promisify(fs.copyFile);
-
 function copyFiles(srcDir, destDir, files) {
-  console.log(' files to copy' + files)
+  console.log('files to copy' + files)
   return Promise.all(files.map(f => {
     return copyFilePromise(path.join(srcDir, f), path.join(destDir, f));
   }));
 }
 
+function configureInstallationDirectory() {
+	let install_dir_file = path.join(userdata_dir, install_dir_filename);
+	fs.readFile(install_dir_file, (err, content) => {
+		if (err) {
+			createInstallPopup();
+		} else {
+			install_dir = content.toString().replace(/(\r\n|\n|\r)/gm, "");
+			verifyInstallDirectory();
+			createMainWindow();
+		}
+	});		
+
+}
+
+function verifyInstallDirectory() {
+	if (!fs.existsSync(install_dir)) fs.mkdirSync(install_dir);
+
+}
+
+function save_user_data() {
+	user_projects.save(install_dir);	
+
+	for (const proj in currently_open_projects) {
+		proj.save();
+	}
+}
+
+
+// IPC HANDLERS
 ipcMain.on('import_files', (e, { src_dir, dest_dir, }) => {
   console.log('src dir: ' + src_dir)
   console.log('dest dir: ' + dest_dir)
@@ -93,36 +127,6 @@ ipcMain.on('import_files', (e, { src_dir, dest_dir, }) => {
   });
 });
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on('window-all-closed', function () {
-  if (!isMac) app.quit();
-})
-
-
-function configureInstallationDirectory() {
-	let install_dir_file = path.join(userdata_dir, install_dir_filename);
-	fs.readFile(install_dir_file, (err, content) => {
-		if (err) {
-			createInstallPopup();
-		} else {
-			install_dir = content.toString().replace(/(\r\n|\n|\r)/gm, "");
-			verifyInstallDirectory();
-			createWindow();
-		}
-	});		
-
-}
-
-function verifyInstallDirectory() {
-	if (fs.existsSync(install_dir)) return;
-	// make directory now
-	fs.mkdirSync(install_dir);
-}
-
-// IPC HANDLERS
-
 ipcMain.on('install_directory_selected', (e, { dir,}) => {
   console.log('installation dir: ' + dir)
 	install_dir = dir;
@@ -134,7 +138,7 @@ ipcMain.on('install_directory_selected', (e, { dir,}) => {
 
 	selectInstallPopup.close();
 	verifyInstallDirectory();
-	createWindow();
+	createMainWindow();
 });
 
 ipcMain.handle('get_default_install_location', async (event, args) => {
@@ -149,3 +153,97 @@ ipcMain.handle('dialog', async (event, method, params) => {
 	const result = await dialog[method](params);
 	return result;
 });
+
+ipcMain.handle('create_project', async (event, args) => {
+	
+});
+
+// Quit when all windows are closed, except on macOS. There, it's common
+// for applications and their menu bar to stay active until the user quits
+// explicitly with Cmd + Q.
+app.on('window-all-closed', function () {
+  if (!isMac) app.quit();
+	save_user_data();
+})
+
+
+
+
+
+const projects_json_filename = "projects.json";
+
+class Project {
+	constructor(name, dest_dir, install_dir, archived) {
+		this.name = name;
+		this.dest_dir = dest_dir;
+		this.archived = archived;
+		this.filepath = path.join(install_dir, name);
+		create_project_dir();
+	}
+
+	static from(json) {
+		return Object.assign(new Project(), json);
+	}
+
+	save(install_dir) {
+		// save to this.save_dir
+		let stored_project_file_path = path.join(this.filepath, this.name + ".json");	
+		fs.writeFile(stored_project_file_path, JSON.stringify(this), err => {
+			if (err) console.log("ERROR SAVING USER PROJECT " + this.name);	
+		});
+	}
+
+	create_project_dir() {
+		// check if this exists first inside install_dir, if not create it
+	}
+
+	archive() {
+		// delete all temp files in directory
+		this.archived = true;
+	}
+}
+
+class UserProjects {
+	constructor() {
+		this.project_names = []; // list of project objects
+	}
+
+	static from(json) {
+		return Object.assign(new UserProjects(), json);
+	}
+
+	getProject(name) {
+		for (const proj_name of this.project_list) {
+			if (proj_name == name) {
+				// TODO
+				// check if project dir exists
+				// return json object from reading the file
+			}
+		}
+		return null;
+	}
+
+	add(proj) {
+		this.project_list.push(proj.name);
+	}
+
+	save(install_dir) {
+		// save to install_dir	
+		let stored_projects_file_path = path.join(install_dir, projects_json_filename);	
+		fs.writeFile(stored_projects_file_path, JSON.stringify(this), err => {
+			if (err) console.log("ERROR SAVING USER PROJECT LIST");	
+		});
+	}
+}
+
+function loadUserProjects(install_dir) {
+	// returns a user projects object
+	let stored_projects_file_path = path.join(install_dir, projects_json_filename);	
+	fs.readFile(stored_projects_file_path, (err, content) => {
+		if (err) {
+			user_projects = new UserProjects();
+		} else {
+			user_projects = UserProjects.from(content);
+		}
+	})
+}

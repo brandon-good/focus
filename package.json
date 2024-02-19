@@ -10,9 +10,11 @@
   "author": "brandon",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^28.2.2"
+    "electron": "^28.2.2",
+		"module": "./projects.js"
   },
   "dependencies": {
-    "node-file-dialog": "^1.0.3"
+    "node-file-dialog": "^1.0.3",
+		"module": "./projects.js"
   }
 }
