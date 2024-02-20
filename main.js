@@ -38,7 +38,7 @@ function createMainWindow() {
   if (isDev)
     mainWindow.webContents.openDevTools();
 
-	loadUserProjects(install_dir);
+	load_user_projects(install_dir);
 
   // and load the index.html of the app.
   mainWindow.loadFile('index.html');
@@ -152,9 +152,11 @@ ipcMain.on('cancel_new_project', async (event, args) => {
 })
 
 ipcMain.on('create_new_project', async(event, args) => {
-	// first verify that they have chosen a unique name and these directories exist
-	// TODO add these checks
-	console.log(args);
+	if (!verify_new_project(args.name, args.src_dir, args.dest_dir)) {
+		console.log("INVALID PROJECT");
+		return;
+	}
+
 	proj = new_project(args.name, args.src_dir, args.dest_dir, install_dir);
 	add_project(user_projects, proj);
 	currently_open_projects.push(proj);
@@ -268,7 +270,7 @@ function save_user_projects(user_projects, install_dir) {
 	});
 }
 
-function loadUserProjects(install_dir) {
+function load_user_projects(install_dir) {
 	// returns a user projects object
 	let stored_projects_file_path = path.join(install_dir, projects_json_filename);	
 	fs.readFile(stored_projects_file_path, (err, content) => {
@@ -278,4 +280,15 @@ function loadUserProjects(install_dir) {
 			user_projects = user_projects_from_json(content);
 		}
 	})
+}
+
+function verify_new_project(name, src_dir, dest_dir) {
+	// return true is this is valid, false if not valid
+	
+	// check unique name
+	let duplicate = false;
+	user_projects.project_list.forEach(proj => {if (name == proj.name) duplicate = true});
+
+	// check src and dest directories
+	return !duplicate && fs.existsSync(src_dir) && fs.existsSync(dest_dir)
 }
