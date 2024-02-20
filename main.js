@@ -17,6 +17,7 @@ let install_dir = path.join(app.getPath('home'), 'Focus');
 
 let mainWindow;
 let selectInstallPopup;
+let currently_open_project_windows = [];
 
 let user_projects;
 let currently_open_projects = [];
@@ -60,7 +61,7 @@ function createInstallPopup() {
     selectInstallPopup.webContents.openDevTools();
 
   // and load the index.html of the app.
-  selectInstallPopup.loadFile('select_install_dir.html');
+  selectInstallPopup.loadFile('config_install.html');
 }
 
 // This method will be called when Electron has finished
@@ -116,15 +117,6 @@ function save_user_data() {
 ipcMain.on('import_files', (e, { src_dir, dest_dir, }) => {
   console.log('src dir: ' + src_dir)
   console.log('dest dir: ' + dest_dir)
-  copyFiles(src_dir, dest_dir,
-    fs.readdirSync(src_dir).filter(file => {
-      return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
-    })
-  ).then(() => {
-    console.log("done");
-  }).catch(err => {
-    console.log(err);
-  });
 });
 
 ipcMain.on('install_directory_selected', (e, { dir,}) => {
@@ -154,9 +146,38 @@ ipcMain.handle('dialog', async (event, method, params) => {
 	return result;
 });
 
-ipcMain.handle('create_project', async (event, args) => {
-	
+ipcMain.on('start_create_project', async (event, args) => {
+  mainWindow.loadFile('new_project.html');
 });
+
+ipcMain.on('cancel_new_project', async (event, args) => {
+	mainWindow.loadFile('index.html'); // return to main display	
+})
+
+ipcMain.on('create_new_project', async(event, args) => {
+	// first verify that they have chosen a unique name and these directories exist
+	// TODO add these checks
+	console.log(args);
+	proj = new Project(args.name, args.src_dir, args.dest_dir, install_dir, false);
+	user_projects.add(proj);
+	currently_open_projects.push(proj);
+
+	// TODO update index.html with new project
+	mainWindow.loadFile('index.html'); // return to main display	
+	
+	// TODO open new window with project
+	
+	// this should occur in the background hopefully
+  copyFiles(args.src_dir, args.dest_dir,
+    fs.readdirSync(args.src_dir).filter(file => {
+      return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
+    })
+  ).then(() => {
+    console.log("done");
+  }).catch(err => {
+    console.log(err);
+  });
+})
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
@@ -168,17 +189,18 @@ app.on('window-all-closed', function () {
 
 
 
-
+// I WANT TO PUT ALL THIS SHIT INTO A DIFFERENT FOLDER BUT I CANT FOR THE LIFE OF ME
 
 const projects_json_filename = "projects.json";
 
 class Project {
-	constructor(name, dest_dir, install_dir, archived) {
+	constructor(name, src_dir, dest_dir, install_dir, archived) {
 		this.name = name;
+		this.src_dir = src_dir;
 		this.dest_dir = dest_dir;
 		this.archived = archived;
 		this.filepath = path.join(install_dir, name);
-		create_project_dir();
+		this.create_project_dir();
 	}
 
 	static from(json) {
@@ -194,7 +216,12 @@ class Project {
 	}
 
 	create_project_dir() {
+		if (fs.existsSync(this.filepath)) return;
 		// check if this exists first inside install_dir, if not create it
+		fs.mkdirSync(this.filepath);
+		this.save();
+
+		// TODO save the jpg images
 	}
 
 	archive() {
@@ -205,7 +232,7 @@ class Project {
 
 class UserProjects {
 	constructor() {
-		this.project_names = []; // list of project objects
+		this.project_list = []; // list of project objects
 	}
 
 	static from(json) {

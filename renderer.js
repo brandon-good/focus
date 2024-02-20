@@ -1,5 +1,6 @@
 const btn_frm = document.getElementById("#import_from_dir") // directory to import RAWs from (like the SD card)
 const btn_to = document.getElementById('#import_to_dir') // dir to import RAWS to
+const btn_create = document.getElementById("#create_proj_btn");
 const dialogConfig = {
     title: 'Choose Directory',
     buttonLabel: 'Choose Directory',
@@ -25,9 +26,14 @@ function importPhotos(event) {
     })
 }
 
+function onNewProjectClicked(event) {
+	ipcRenderer.send('start_create_project', {});
+}
+
 function isARW(file) {
     const acceptedExtension = '.ARW';
     return file && acceptedExtension.includes(file['type'])
 }
 
 btn_frm.addEventListener('click', importPhotos)
+btn_create.addEventListener('click', onNewProjectClicked)

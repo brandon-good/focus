@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="script-src 'self'" />
+  <title>How to open a directory</title>
+</head>
+
+<body>
+  <div>
+		<p>Project Name: </p>
+		<input type="text" id="#project_name">
+
+		<p>Source Folder: </p>
+		<p id = #src_dir_display></p>
+    <button id="#src_dir_btn" class="btn">Choose Source Folder</button>
+
+		<p>Destination Folder: </p>
+		<p id = #dest_dir_display></p>
+    <button id="#dest_dir_btn" class="btn">Choose Destination Folder</button>
+
+		<button id="#new_project_create_btn">Create</button>
+		<button id="#new_project_cancel_btn">Cancel</button>
+  </div>
+
+  <pre></pre>
+  <script src="new_project_renderer.js" defer></script>
+</body>
+
+</html>
