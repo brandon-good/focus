@@ -105,11 +105,8 @@ function verifyInstallDirectory() {
 }
 
 function save_user_data() {
-	user_projects.save(install_dir);	
-
-	for (const proj in currently_open_projects) {
-		proj.save();
-	}
+	save_user_projects(user_projects, install_dir);
+	currently_open_projects.forEach(proj => save_project(proj));
 }
 
 
@@ -158,9 +155,10 @@ ipcMain.on('create_new_project', async(event, args) => {
 	// first verify that they have chosen a unique name and these directories exist
 	// TODO add these checks
 	console.log(args);
-	proj = new Project(args.name, args.src_dir, args.dest_dir, install_dir, false);
-	user_projects.add(proj);
+	proj = new_project(args.name, args.src_dir, args.dest_dir, install_dir);
+	add_project(user_projects, proj);
 	currently_open_projects.push(proj);
+	console.log('open: ' + currently_open_projects);
 
 	// TODO update index.html with new project
 	mainWindow.loadFile('index.html'); // return to main display	
@@ -193,74 +191,81 @@ app.on('window-all-closed', function () {
 
 const projects_json_filename = "projects.json";
 
-class Project {
-	constructor(name, src_dir, dest_dir, install_dir, archived) {
-		this.name = name;
-		this.src_dir = src_dir;
-		this.dest_dir = dest_dir;
-		this.archived = archived;
-		this.filepath = path.join(install_dir, name);
-		this.create_project_dir();
-	}
-
-	static from(json) {
-		return Object.assign(new Project(), json);
-	}
-
-	save(install_dir) {
-		// save to this.save_dir
-		let stored_project_file_path = path.join(this.filepath, this.name + ".json");	
-		fs.writeFile(stored_project_file_path, JSON.stringify(this), err => {
-			if (err) console.log("ERROR SAVING USER PROJECT " + this.name);	
-		});
-	}
-
-	create_project_dir() {
-		if (fs.existsSync(this.filepath)) return;
-		// check if this exists first inside install_dir, if not create it
-		fs.mkdirSync(this.filepath);
-		this.save();
-
-		// TODO save the jpg images
-	}
-
-	archive() {
-		// delete all temp files in directory
-		this.archived = true;
-	}
+const Project = {
+	name: "NO_NAME",
+	src_dir: "NO_SRC",
+	dest_dir: "NO_DEST",
+	filepath: "NO_SAVE_LOC",
+	archived: false,
 }
 
-class UserProjects {
-	constructor() {
-		this.project_list = []; // list of project objects
-	}
+function new_project(name, src_dir, dest_dir, install_dir) {
+	proj = Object.create(Project);
+	proj.name = name;
+	proj.src_dir = src_dir;
+	proj.dest_dir = dest_dir;
+	proj.filepath = path.join(install_dir, name);
+	create_project_dir(proj);
+	return proj;
+}
 
-	static from(json) {
-		return Object.assign(new UserProjects(), json);
-	}
+function project_from_json(json) {
+	proj = JSON.parse(json);
+	if (!proj.archived)
+		create_project_dir(proj);
 
-	getProject(name) {
-		for (const proj_name of this.project_list) {
-			if (proj_name == name) {
-				// TODO
-				// check if project dir exists
-				// return json object from reading the file
-			}
-		}
-		return null;
-	}
+	return proj;
+}
 
-	add(proj) {
-		this.project_list.push(proj.name);
-	}
+function archive(project) {
+	// delete all temp files in directory
+	project.archived = true;
+}
 
-	save(install_dir) {
-		// save to install_dir	
-		let stored_projects_file_path = path.join(install_dir, projects_json_filename);	
-		fs.writeFile(stored_projects_file_path, JSON.stringify(this), err => {
-			if (err) console.log("ERROR SAVING USER PROJECT LIST");	
-		});
-	}
+function create_project_dir(project) {
+	if (fs.existsSync(project.filepath)) return;
+	// check if this exists first inside install_dir, if not create it
+	fs.mkdirSync(project.filepath);
+	save_project(project);
+
+	// TODO save the jpg images
+}
+
+function save_project(project) {
+	// save to this.save_dir
+	console.log('filepath:'+project.filepath);
+	console.log('name:'+project.name);
+	let stored_project_file_path = path.join(project.filepath, project.name + ".json");	
+	console.log(JSON.stringify(project));
+	fs.writeFile(stored_project_file_path, JSON.stringify(project), err => {
+		if (err) console.log("ERROR SAVING USER PROJECT " + project.name);	
+	});
+}
+
+const UserProjects = {
+	project_list: [],
+}
+
+function new_user_projects() {
+	user_projects = Object.create(UserProjects);
+	user_projects.project_list = [];
+	return user_projects;
+}
+
+function user_projects_from_json(json) {
+	return JSON.parse(json);
+}
+
+function add_project(user_projects, project) {
+	user_projects.project_list.push(project);
+}
+
+function save_user_projects(user_projects, install_dir) {
+	// save to install_dir	
+	let stored_projects_file_path = path.join(install_dir, projects_json_filename);	
+	fs.writeFile(stored_projects_file_path, JSON.stringify(user_projects), err => {
+		if (err) console.log("ERROR SAVING USER PROJECT LIST");	
+	});
 }
 
 function loadUserProjects(install_dir) {
@@ -268,9 +273,9 @@ function loadUserProjects(install_dir) {
 	let stored_projects_file_path = path.join(install_dir, projects_json_filename);	
 	fs.readFile(stored_projects_file_path, (err, content) => {
 		if (err) {
-			user_projects = new UserProjects();
+			user_projects = new_user_projects();
 		} else {
-			user_projects = UserProjects.from(content);
+			user_projects = user_projects_from_json(content);
 		}
 	})
 }
