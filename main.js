@@ -225,12 +225,31 @@ function archive(project) {
 }
 
 function create_project_dir(project) {
-	if (fs.existsSync(project.filepath)) return;
 	// check if this exists first inside install_dir, if not create it
-	fs.mkdirSync(project.filepath);
+	let thumb_loc = path.join(project.filepath, "thumbnails");
+	let xml_loc = path.join(project.filepath, "xmls")
+	if (! fs.existsSync(project.filepath)) fs.mkdirSync(project.filepath);
+	if (! fs.existsSync(thumb_loc)) fs.mkdirSync(thumb_loc);
+	if (! fs.existsSync(xml_loc)) fs.mkdirSync(xml_loc);
+
 	save_project(project);
 
 	// TODO save the jpg images
+	
+}
+
+function generate_thumbnails(project, files) {
+	// files is passed as an argument because we might load the files from elsewhere
+	// it is possible that we have to recreate the thumbnails based on the destination copied files
+	// DO NOT OVERWRITE EXISTING FILES
+
+}
+
+function generate_xmls(project, files) {
+	// file sis passed as an argument because we might load the files from elsewhere
+	// it is possible that we have to recreate the thumbnails based on the destination copied files
+	// DO NOT OVERWRITE EXISTING FILES
+	
 }
 
 function save_project(project) {
