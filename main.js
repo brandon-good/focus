@@ -9,7 +9,9 @@ const util = require('util');
 const isMac = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
 const isDev = process.env.NODE_ENV !== 'development';
-const SONY_RAW_EXTENSION = '.ARW'
+const PREVIEW_FOLDER_NAME = 'previews';
+const XLMS_FOLDER_NAME = 'xmls';
+const SONY_RAW_EXTENSION = '.ARW';
 
 const userdata_dir = app.getPath('userData');
 const install_dir_filename = 'install_directory.txt';
@@ -109,6 +111,31 @@ function save_user_data() {
 	currently_open_projects.forEach(proj => save_project(proj));
 }
 
+let rmdir = function (dir) {
+	let list = fs.readdirSync(dir);
+	for(let i = 0; i < list.length; i++) {
+		let filename = path.join(dir, list[i]);
+		let stat = fs.statSync(filename);
+
+		if(filename === "." || filename === "..") {
+			// pass these files
+		} else if(stat.isDirectory()) {
+			// rmdir recursively
+			rmdir(filename);
+		} else {
+			// rm fiilename
+			fs.unlinkSync(filename);
+		}
+	}
+	fs.rmdirSync(dir);
+}
+
+function uninstall_app() {
+	rmdir(install_dir);		
+	let install_dir_file = path.join(userdata_dir, install_dir_filename);
+	fs.unlinkSync(install_dir_file);
+}
+
 
 // IPC HANDLERS
 ipcMain.on('import_files', (e, { src_dir, dest_dir, }) => {
@@ -179,6 +206,10 @@ ipcMain.on('create_new_project', async(event, args) => {
   });
 })
 
+ipcMain.on('uninstall_app', async (event, args) => {
+	uninstall_app();
+})
+
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
@@ -226,8 +257,8 @@ function archive(project) {
 
 function create_project_dir(project) {
 	// check if this exists first inside install_dir, if not create it
-	let thumb_loc = path.join(project.filepath, "thumbnails");
-	let xml_loc = path.join(project.filepath, "xmls")
+	let thumb_loc = path.join(project.filepath, PREVIEW_FOLDER_NAME);
+	let xml_loc = path.join(project.filepath, XMLS_FOLDER_NAME)
 	if (! fs.existsSync(project.filepath)) fs.mkdirSync(project.filepath);
 	if (! fs.existsSync(thumb_loc)) fs.mkdirSync(thumb_loc);
 	if (! fs.existsSync(xml_loc)) fs.mkdirSync(xml_loc);
@@ -306,7 +337,7 @@ function verify_new_project(name, src_dir, dest_dir) {
 	
 	// check unique name
 	let duplicate = false;
-	user_projects.project_list.forEach(proj => {if (name == proj.name) duplicate = true});
+	user_projects.project_list.forEach(proj => {if (name === proj.name) duplicate = true});
 
 	// check src and dest directories
 	return !duplicate && fs.existsSync(src_dir) && fs.existsSync(dest_dir)
