@@ -10,7 +10,7 @@ const isMac = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
 const isDev = process.env.NODE_ENV !== 'development';
 const PREVIEW_FOLDER_NAME = 'previews';
-const XLMS_FOLDER_NAME = 'xmls';
+const XMLS_FOLDER_NAME = 'xmls';
 const SONY_RAW_EXTENSION = '.ARW';
 
 const userdata_dir = app.getPath('userData');
@@ -170,6 +170,37 @@ ipcMain.handle('dialog', async (event, method, params) => {
 	return result;
 });
 
+ipcMain.handle('get_project_names', async (event, args) => {
+	return user_projects.project_list.map( (proj) => proj.name);
+});
+
+ipcMain.on('project_selected', async (event, args) => {
+	let project = get_project(user_projects, args.name);
+	if (project === null) {
+		console.log("PROJECT DOES NOT EXIST");
+		return null;
+	}
+
+	// inform main.js that this project is actively being used
+	currently_open_projects.push(project);
+
+	// set current scene to that for the project
+	mainWindow.loadFile('project.html');
+});
+
+ipcMain.handle('get_currently_open_projects', async (event, args) => {
+	return currently_open_projects;
+})
+
+ipcMain.on('return_index', async (event, args) => {
+	mainWindow.loadFile('index.html');
+	// TODO close currently active project
+	
+	// saves and removes all active projects
+	currently_open_projects.forEach( (proj) => save_project(proj) );
+	currently_open_projects = [];
+}); 
+
 ipcMain.on('start_create_project', async (event, args) => {
   mainWindow.loadFile('new_project.html');
 });
@@ -310,6 +341,14 @@ function user_projects_from_json(json) {
 
 function add_project(user_projects, project) {
 	user_projects.project_list.push(project);
+}
+
+function get_project(user_projects, project_name) {
+	let project_found = null;
+	user_projects.project_list.forEach((proj) => {
+		if (proj.name === project_name) project_found = proj;
+	});
+	return project_found;
 }
 
 function save_user_projects(user_projects, install_dir) {

@@ -1,5 +1,3 @@
-//const btn_frm = document.getElementById("#import_from_dir") // directory to import RAWs from (like the SD card)
-//const btn_to = document.getElementById('#import_to_dir') // dir to import RAWS to
 const btn_create = document.getElementById("#create_proj_btn");
 const btn_uninstall = document.getElementById("#uninstall_app_btn");
 const dialogConfig = {
@@ -8,23 +6,23 @@ const dialogConfig = {
     properties: ['openDirectory']
 };
 
-function importPhotos(event) {
-    console.log('choose device to import photos from')
-    electron.dialog('showOpenDialog', dialogConfig).then(import_from => {
-        console.log('import_from canceled: ' + import_from.canceled);
-        console.log('import_from filepaths: ' + import_from.filePaths);
-        if (!import_from.canceled) {
-            electron.dialog('showOpenDialog', dialogConfig).then(import_to => {
-                console.log('import_to canceled: ' + import_to.canceled);
-                console.log('import_to filepaths: ' + import_to.filePaths);
-                const src_dir = import_from.filePaths[0]
-                const dest_dir = import_to.filePaths[0]
-                ipcRenderer.send('import_files', {
-                    src_dir, dest_dir
-                });
-            })
-        }
-    })
+const project_list = document.getElementById("#project_list");
+populateProjects();
+
+function populateProjects() {
+	electron.get_project_names('get_project_names', {}).then( (proj_names) => {
+		proj_names.forEach((name) => {
+			let entry = document.createElement('li');
+			let btn = document.createElement('button');
+			btn.textContent = name;
+			btn.addEventListener('click', () => {
+				ipcRenderer.send('project_selected', {name})
+			});
+
+			entry.appendChild(btn);
+			project_list.appendChild(entry);
+		});
+	});
 }
 
 function onNewProjectClicked(event) {
@@ -40,6 +38,5 @@ function isARW(file) {
     return file && acceptedExtension.includes(file['type'])
 }
 
-//btn_frm.addEventListener('click', importPhotos)
 btn_create.addEventListener('click', onNewProjectClicked)
 btn_uninstall.addEventListener('click', onUninstallClicked)
