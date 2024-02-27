@@ -4,6 +4,7 @@ const fs = require('fs');
 const console = require('console')
 const path = require('node:path')
 const util = require('util');
+const js2xmlparser = require('js2xmlparser');
 //const projects = require('./projects.js');
 
 const isMac = process.platform === 'darwin';
@@ -81,7 +82,7 @@ app.whenReady().then(() => {
 
 const copyFilePromise = util.promisify(fs.copyFile);
 function copyFiles(srcDir, destDir, files) {
-  console.log('files to copy' + files)
+  console.log('files to copy ' + files);
   return Promise.all(files.map(f => {
     return copyFilePromise(path.join(srcDir, f), path.join(destDir, f));
   }));
@@ -215,10 +216,22 @@ ipcMain.on('create_new_project', async(event, args) => {
 		return;
 	}
 
-	proj = new_project(args.name, args.src_dir, args.dest_dir, install_dir);
+	let proj = new_project(args.name, args.src_dir, args.dest_dir, install_dir);
 	add_project(user_projects, proj);
 	currently_open_projects.push(proj);
 	console.log('open: ' + currently_open_projects);
+
+	const default_xml_info = {
+		filename: "",
+		rating: "",
+		tags: ""
+	};
+
+	generate_xmls(proj, default_xml_info,
+		fs.readdirSync(args.src_dir).filter(file => {
+			return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
+		})
+	);
 
 	// TODO update index.html with new project
 	mainWindow.loadFile('index.html'); // return to main display	
@@ -307,11 +320,25 @@ function generate_thumbnails(project, files) {
 
 }
 
-function generate_xmls(project, files) {
-	// file sis passed as an argument because we might load the files from elsewhere
+function generate_xmls(project, xml_info, files) {
+	// files is passed as an argument because we might load the files from elsewhere
 	// it is possible that we have to recreate the thumbnails based on the destination copied files
 	// DO NOT OVERWRITE EXISTING FILES
-	
+	files.forEach(file => {
+		let xml_file = path.basename(file, path.extname(file)) + ".xml";
+		const filePath = path.join(project.filepath, XMLS_FOLDER_NAME, xml_file);
+		// skip if the file exists already
+		if (fs.existsSync(filePath)) {
+			console.log(filePath + 'already exists. Skipping.');
+			return;
+		}
+		// otherwise generate xml and save
+		xml_info.filename = file;
+		const xml = js2xmlparser.parse('root', xml_info);
+		fs.writeFile(filePath, xml, err => {
+			if (err) console.log("ERROR SAVING PROJECT XMLS " + project.name);
+		});
+	});
 }
 
 function save_project(project) {
@@ -353,7 +380,7 @@ function get_project(user_projects, project_name) {
 
 function save_user_projects(user_projects, install_dir) {
 	// save to install_dir	
-	let stored_projects_file_path = path.join(install_dir, projects_json_filename);	
+	let stored_projects_file_path = path.join(install_dir, projects_json_filename);
 	fs.writeFile(stored_projects_file_path, JSON.stringify(user_projects), err => {
 		if (err) console.log("ERROR SAVING USER PROJECT LIST");	
 	});
