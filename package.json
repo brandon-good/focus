@@ -11,10 +11,12 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^28.2.2",
-		"module": "./projects.js"
+    "module": "./projects.js"
   },
   "dependencies": {
-    "node-file-dialog": "^1.0.3",
-		"module": "./projects.js"
+    "console": "^0.7.2",
+    "js2xmlparser": "^5.0.0",
+    "module": "./projects.js",
+    "node-file-dialog": "^1.0.3"
   }
 }
