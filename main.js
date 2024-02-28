@@ -40,7 +40,7 @@ function createMainWindow() {
   if (isDev)
     mainWindow.webContents.openDevTools();
 
-	load_user_projects(install_dir);
+	loadUserProjects(install_dir);
 
   // and load the index.html of the app.
   mainWindow.loadFile('index.html');
@@ -107,8 +107,8 @@ function verifyInstallDirectory() {
 }
 
 function save_user_data() {
-	save_user_projects(user_projects, install_dir);
-	currently_open_projects.forEach(proj => save_project(proj));
+	saveUserProjects(user_projects, install_dir);
+	currently_open_projects.forEach(proj => saveProject(proj));
 }
 
 let rmdir = function (dir) {
@@ -175,7 +175,7 @@ ipcMain.handle('get_project_names', async (event, args) => {
 });
 
 ipcMain.on('project_selected', async (event, args) => {
-	let project = get_project(user_projects, args.name);
+	let project = getProject(user_projects, args.name);
 	if (project === null) {
 		console.log("PROJECT DOES NOT EXIST");
 		return null;
@@ -197,7 +197,7 @@ ipcMain.on('return_index', async (event, args) => {
 	// TODO close currently active project
 	
 	// saves and removes all active projects
-	currently_open_projects.forEach( (proj) => save_project(proj) );
+	currently_open_projects.forEach( (proj) => saveProject(proj) );
 	currently_open_projects = [];
 }); 
 
@@ -210,23 +210,23 @@ ipcMain.on('cancel_new_project', async (event, args) => {
 })
 
 ipcMain.on('create_new_project', async(event, args) => {
-	if (!verify_new_project(args.name, args.src_dir, args.dest_dir)) {
+	if (!verifyNewProject(args.name, args.src_dir, args.dest_dir)) {
 		console.log("INVALID PROJECT");
 		return;
 	}
 
 	let proj = new_project(args.name, args.src_dir, args.dest_dir, install_dir);
-	add_project(user_projects, proj);
+	addProject(user_projects, proj);
 	currently_open_projects.push(proj);
 	console.log('open: ' + currently_open_projects);
 
-	const default_xml_info = {
+	const defaultInfoXML = {
 		filename: "",
 		rating: "",
 		tags: ""
 	};
 
-	generate_xmls(proj, default_xml_info,
+	generateXMLs(proj, defaultInfoXML,
 		fs.readdirSync(args.src_dir).filter(file => {
 			return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
 		})
@@ -304,7 +304,7 @@ function create_project_dir(project) {
 	if (! fs.existsSync(project.filepath)) fs.mkdirSync(project.filepath);
 	if (! fs.existsSync(thumb_loc)) fs.mkdirSync(thumb_loc);
 
-	save_project(project);
+	saveProject(project);
 
 	// TODO save the jpg images
 	
@@ -317,7 +317,7 @@ function generate_thumbnails(project, files) {
 
 }
 
-function generate_xmls(project, xml_info, files) {
+function generateXMLs(project, infoForXML, files) {
 	// files is passed as an argument because we might load the files from elsewhere
 	// it is possible that we have to recreate the thumbnails based on the destination copied files
 	// DO NOT OVERWRITE EXISTING FILES
@@ -330,15 +330,15 @@ function generate_xmls(project, xml_info, files) {
 			return;
 		}
 		// otherwise generate xml and save
-		xml_info.filename = file;
-		const xml = js2xmlparser.parse('root', xml_info);
+		infoForXML.filename = file;
+		const xml = js2xmlparser.parse('root', infoForXML);
 		fs.writeFile(filePath, xml, err => {
 			if (err) console.log("ERROR SAVING PROJECT XMLS " + project.name);
 		});
 	});
 }
 
-function save_project(project) {
+function saveProject(project) {
 	// save to this.save_dir
 	console.log('filepath:'+project.filepath);
 	console.log('name:'+project.name);
@@ -353,21 +353,21 @@ const UserProjects = {
 	project_list: [],
 }
 
-function new_user_projects() {
+function newUserProjects() {
 	user_projects = Object.create(UserProjects);
 	user_projects.project_list = [];
 	return user_projects;
 }
 
-function user_projects_from_json(json) {
+function userProjectsFromJson(json) {
 	return JSON.parse(json);
 }
 
-function add_project(user_projects, project) {
+function addProject(user_projects, project) {
 	user_projects.project_list.push(project);
 }
 
-function get_project(user_projects, project_name) {
+function getProject(user_projects, project_name) {
 	let project_found = null;
 	user_projects.project_list.forEach((proj) => {
 		if (proj.name === project_name) project_found = proj;
@@ -375,7 +375,7 @@ function get_project(user_projects, project_name) {
 	return project_found;
 }
 
-function save_user_projects(user_projects, install_dir) {
+function saveUserProjects(user_projects, install_dir) {
 	// save to install_dir	
 	let stored_projects_file_path = path.join(install_dir, projects_json_filename);
 	fs.writeFile(stored_projects_file_path, JSON.stringify(user_projects), err => {
@@ -383,19 +383,19 @@ function save_user_projects(user_projects, install_dir) {
 	});
 }
 
-function load_user_projects(install_dir) {
+function loadUserProjects(install_dir) {
 	// returns a user projects object
 	let stored_projects_file_path = path.join(install_dir, projects_json_filename);	
 	fs.readFile(stored_projects_file_path, (err, content) => {
 		if (err) {
-			user_projects = new_user_projects();
+			user_projects = newUserProjects();
 		} else {
-			user_projects = user_projects_from_json(content);
+			user_projects = userProjectsFromJson(content);
 		}
 	})
 }
 
-function verify_new_project(name, src_dir, dest_dir) {
+function verifyNewProject(name, src_dir, dest_dir) {
 	// return true is this is valid, false if not valid
 	
 	// check unique name
