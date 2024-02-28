@@ -1,10 +1,14 @@
+
+// In-project imports
+const proj = require('./project');
+
+
 // Modules to control application life and create native browser window
 const { app, BrowserWindow, dialog, ipcMain } = require('electron')
 const fs = require('fs');
 const console = require('console')
 const path = require('node:path')
 const util = require('util');
-const js2xmlparser = require('js2xmlparser');
 //const projects = require('./projects.js');
 
 const isMac = process.platform === 'darwin';
@@ -21,7 +25,7 @@ let mainWindow;
 let selectInstallPopup;
 let currently_open_project_windows = [];
 
-let user_projects;
+// let user_projects;
 let currently_open_projects = [];
 
 function createMainWindow() {
@@ -40,7 +44,7 @@ function createMainWindow() {
   if (isDev)
     mainWindow.webContents.openDevTools();
 
-	loadUserProjects(install_dir);
+	proj.loadUserProjects(install_dir);
 
   // and load the index.html of the app.
   mainWindow.loadFile('index.html');
@@ -97,7 +101,7 @@ function configureInstallationDirectory() {
 			verifyInstallDirectory();
 			createMainWindow();
 		}
-	});		
+	});
 
 }
 
@@ -107,8 +111,8 @@ function verifyInstallDirectory() {
 }
 
 function save_user_data() {
-	saveUserProjects(user_projects, install_dir);
-	currently_open_projects.forEach(proj => saveProject(proj));
+	proj.saveUserProjects(proj.UserProjects, install_dir);
+	currently_open_projects.forEach(thisProj => proj.saveProject(thisProj));
 }
 
 let rmdir = function (dir) {
@@ -131,7 +135,7 @@ let rmdir = function (dir) {
 }
 
 function uninstall_app() {
-	rmdir(install_dir);		
+	rmdir(install_dir);
 	let install_dir_file = path.join(userdata_dir, install_dir_filename);
 	fs.unlinkSync(install_dir_file);
 }
@@ -171,11 +175,11 @@ ipcMain.handle('dialog', async (event, method, params) => {
 });
 
 ipcMain.handle('get_project_names', async (event, args) => {
-	return user_projects.project_list.map( (proj) => proj.name);
+	return proj.UserProjects.project_list.map( (project) => project.name);
 });
 
 ipcMain.on('project_selected', async (event, args) => {
-	let project = getProject(user_projects, args.name);
+	let project = proj.getProject(proj.UserProjects, args.name);
 	if (project === null) {
 		console.log("PROJECT DOES NOT EXIST");
 		return null;
@@ -195,29 +199,29 @@ ipcMain.handle('get_currently_open_projects', async (event, args) => {
 ipcMain.on('return_index', async (event, args) => {
 	mainWindow.loadFile('index.html');
 	// TODO close currently active project
-	
+
 	// saves and removes all active projects
-	currently_open_projects.forEach( (proj) => saveProject(proj) );
+	currently_open_projects.forEach( (thisProj) => proj.saveProject(thisProj) );
 	currently_open_projects = [];
-}); 
+});
 
 ipcMain.on('start_create_project', async (event, args) => {
   mainWindow.loadFile('new_project.html');
 });
 
 ipcMain.on('cancel_new_project', async (event, args) => {
-	mainWindow.loadFile('index.html'); // return to main display	
+	mainWindow.loadFile('index.html'); // return to main display
 })
 
 ipcMain.on('create_new_project', async(event, args) => {
-	if (!verifyNewProject(args.name, args.src_dir, args.dest_dir)) {
+	if (!proj.verifyNewProject(args.name, args.src_dir, args.dest_dir)) {
 		console.log("INVALID PROJECT");
 		return;
 	}
 
-	let proj = new_project(args.name, args.src_dir, args.dest_dir, install_dir);
-	addProject(user_projects, proj);
-	currently_open_projects.push(proj);
+	let newProj = proj.new_project(args.name, args.src_dir, args.dest_dir, install_dir);
+	proj.addProject(proj.UserProjects, newProj);
+	currently_open_projects.push(newProj);
 	console.log('open: ' + currently_open_projects);
 
 	const defaultInfoXML = {
@@ -226,17 +230,17 @@ ipcMain.on('create_new_project', async(event, args) => {
 		tags: ""
 	};
 
-	generateXMLs(proj, defaultInfoXML,
+	proj.generateXMLs(newProj, defaultInfoXML,
 		fs.readdirSync(args.src_dir).filter(file => {
 			return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
 		})
 	);
 
 	// TODO update index.html with new project
-	mainWindow.loadFile('index.html'); // return to main display	
-	
+	mainWindow.loadFile('index.html'); // return to main display
+
 	// TODO open new window with project
-	
+
 	// this should occur in the background hopefully
   copyFiles(args.src_dir, args.dest_dir,
     fs.readdirSync(args.src_dir).filter(file => {
@@ -261,147 +265,3 @@ app.on('window-all-closed', function () {
 	save_user_data();
 })
 
-
-
-// I WANT TO PUT ALL THIS SHIT INTO A DIFFERENT FOLDER BUT I CANT FOR THE LIFE OF ME
-
-const projects_json_filename = "projects.json";
-
-const Project = {
-	name: "NO_NAME",
-	src_dir: "NO_SRC",
-	dest_dir: "NO_DEST",
-	filepath: "NO_SAVE_LOC",
-	archived: false,
-}
-
-function new_project(name, src_dir, dest_dir, install_dir) {
-	proj = Object.create(Project);
-	proj.name = name;
-	proj.src_dir = src_dir;
-	proj.dest_dir = dest_dir;
-	proj.filepath = path.join(install_dir, name);
-	create_project_dir(proj);
-	return proj;
-}
-
-function project_from_json(json) {
-	proj = JSON.parse(json);
-	if (!proj.archived)
-		create_project_dir(proj);
-
-	return proj;
-}
-
-function archive(project) {
-	// delete all temp files in directory
-	project.archived = true;
-}
-
-function create_project_dir(project) {
-	// check if this exists first inside install_dir, if not create it
-	let thumb_loc = path.join(project.filepath, PREVIEW_FOLDER_NAME);
-	if (! fs.existsSync(project.filepath)) fs.mkdirSync(project.filepath);
-	if (! fs.existsSync(thumb_loc)) fs.mkdirSync(thumb_loc);
-
-	saveProject(project);
-
-	// TODO save the jpg images
-	
-}
-
-function generate_thumbnails(project, files) {
-	// files is passed as an argument because we might load the files from elsewhere
-	// it is possible that we have to recreate the thumbnails based on the destination copied files
-	// DO NOT OVERWRITE EXISTING FILES
-
-}
-
-function generateXMLs(project, infoForXML, files) {
-	// files is passed as an argument because we might load the files from elsewhere
-	// it is possible that we have to recreate the thumbnails based on the destination copied files
-	// DO NOT OVERWRITE EXISTING FILES
-	files.forEach(file => {
-		let xml_file = path.basename(file, path.extname(file)) + ".xml";
-		const filePath = path.join(project.dest_dir, xml_file);
-		// skip if the file exists already
-		if (fs.existsSync(filePath)) {
-			console.log(filePath + 'already exists. Skipping.');
-			return;
-		}
-		// otherwise generate xml and save
-		infoForXML.filename = file;
-		const xml = js2xmlparser.parse('root', infoForXML);
-		fs.writeFile(filePath, xml, err => {
-			if (err) console.log("ERROR SAVING PROJECT XMLS " + project.name);
-		});
-	});
-}
-
-function saveProject(project) {
-	// save to this.save_dir
-	console.log('filepath:'+project.filepath);
-	console.log('name:'+project.name);
-	let stored_project_file_path = path.join(project.filepath, project.name + ".json");	
-	console.log(JSON.stringify(project));
-	fs.writeFile(stored_project_file_path, JSON.stringify(project), err => {
-		if (err) console.log("ERROR SAVING USER PROJECT " + project.name);	
-	});
-}
-
-const UserProjects = {
-	project_list: [],
-}
-
-function newUserProjects() {
-	user_projects = Object.create(UserProjects);
-	user_projects.project_list = [];
-	return user_projects;
-}
-
-function userProjectsFromJson(json) {
-	return JSON.parse(json);
-}
-
-function addProject(user_projects, project) {
-	user_projects.project_list.push(project);
-}
-
-function getProject(user_projects, project_name) {
-	let project_found = null;
-	user_projects.project_list.forEach((proj) => {
-		if (proj.name === project_name) project_found = proj;
-	});
-	return project_found;
-}
-
-function saveUserProjects(user_projects, install_dir) {
-	// save to install_dir	
-	let stored_projects_file_path = path.join(install_dir, projects_json_filename);
-	fs.writeFile(stored_projects_file_path, JSON.stringify(user_projects), err => {
-		if (err) console.log("ERROR SAVING USER PROJECT LIST");	
-	});
-}
-
-function loadUserProjects(install_dir) {
-	// returns a user projects object
-	let stored_projects_file_path = path.join(install_dir, projects_json_filename);	
-	fs.readFile(stored_projects_file_path, (err, content) => {
-		if (err) {
-			user_projects = newUserProjects();
-		} else {
-			user_projects = userProjectsFromJson(content);
-		}
-	})
-}
-
-function verifyNewProject(name, src_dir, dest_dir) {
-	// return true is this is valid, false if not valid
-	
-	// check unique name
-	let duplicate = false;
-	user_projects.project_list.forEach(proj => {if (name === proj.name) duplicate = true});
-
-	// check src and dest directories
-	return !duplicate && fs.existsSync(src_dir) && fs.existsSync(dest_dir)
-}
