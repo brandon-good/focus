@@ -11,7 +11,6 @@ const isMac = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
 const isDev = process.env.NODE_ENV !== 'development';
 const PREVIEW_FOLDER_NAME = 'previews';
-const XMLS_FOLDER_NAME = 'xmls';
 const SONY_RAW_EXTENSION = '.ARW';
 
 const userdata_dir = app.getPath('userData');
@@ -302,10 +301,8 @@ function archive(project) {
 function create_project_dir(project) {
 	// check if this exists first inside install_dir, if not create it
 	let thumb_loc = path.join(project.filepath, PREVIEW_FOLDER_NAME);
-	let xml_loc = path.join(project.filepath, XMLS_FOLDER_NAME)
 	if (! fs.existsSync(project.filepath)) fs.mkdirSync(project.filepath);
 	if (! fs.existsSync(thumb_loc)) fs.mkdirSync(thumb_loc);
-	if (! fs.existsSync(xml_loc)) fs.mkdirSync(xml_loc);
 
 	save_project(project);
 
@@ -326,7 +323,7 @@ function generate_xmls(project, xml_info, files) {
 	// DO NOT OVERWRITE EXISTING FILES
 	files.forEach(file => {
 		let xml_file = path.basename(file, path.extname(file)) + ".xml";
-		const filePath = path.join(project.filepath, XMLS_FOLDER_NAME, xml_file);
+		const filePath = path.join(project.dest_dir, xml_file);
 		// skip if the file exists already
 		if (fs.existsSync(filePath)) {
 			console.log(filePath + 'already exists. Skipping.');
