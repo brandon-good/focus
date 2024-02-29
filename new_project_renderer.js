@@ -35,7 +35,7 @@ function select_dest(event) {
 
 function create_project(event) {
 	let name = name_field.value;
-	ipcRenderer.send('create_new_project', { name, src_dir, dest_dir, })
+	ipcRenderer.send('create_new_project', { name, src_dir: srcDir, dest_dir: destDir, })
 }
 
 function cancel_project(event) {

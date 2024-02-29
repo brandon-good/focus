@@ -41,10 +41,9 @@ function createMainWindow() {
   })
 
   // Open the DevTools.
-  if (isDev)
-    mainWindow.webContents.openDevTools();
+  if (isDev) mainWindow.webContents.openDevTools();
 
-	proj.loadUserProjects(install_dir);
+  proj.loadUserProjects(install_dir);
 
   // and load the index.html of the app.
   mainWindow.loadFile('index.html');
@@ -175,7 +174,7 @@ ipcMain.handle('dialog', async (event, method, params) => {
 });
 
 ipcMain.handle('get_project_names', async (event, args) => {
-	return proj.UserProjects.project_list.map( (project) => project.name);
+	return proj.UserProjects.projectList.map( (project) => project.name);
 });
 
 ipcMain.on('project_selected', async (event, args) => {
@@ -214,12 +213,12 @@ ipcMain.on('cancel_new_project', async (event, args) => {
 })
 
 ipcMain.on('create_new_project', async(event, args) => {
-	if (!proj.verifyNewProject(args.name, args.src_dir, args.dest_dir)) {
+	if (!proj.verifyNewProject(args.name, args.srcDir, args.destDir)) {
 		console.log("INVALID PROJECT");
 		return;
 	}
 
-	let newProj = proj.new_project(args.name, args.src_dir, args.dest_dir, install_dir);
+	let newProj = proj.new_project(args.name, args.srcDir, args.destDir, install_dir);
 	proj.addProject(proj.UserProjects, newProj);
 	currently_open_projects.push(newProj);
 	console.log('open: ' + currently_open_projects);
@@ -231,7 +230,7 @@ ipcMain.on('create_new_project', async(event, args) => {
 	};
 
 	proj.generateXMLs(newProj, defaultInfoXML,
-		fs.readdirSync(args.src_dir).filter(file => {
+		fs.readdirSync(args.srcDir).filter(file => {
 			return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
 		})
 	);
@@ -242,8 +241,8 @@ ipcMain.on('create_new_project', async(event, args) => {
 	// TODO open new window with project
 
 	// this should occur in the background hopefully
-  copyFiles(args.src_dir, args.dest_dir,
-    fs.readdirSync(args.src_dir).filter(file => {
+  copyFiles(args.srcDir, args.destDir,
+    fs.readdirSync(args.srcDir).filter(file => {
       return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
     })
   ).then(() => {

@@ -6,7 +6,7 @@ const dialogConfig = {
     properties: ['openDirectory']
 };
 
-const project_list = document.getElementById("#project_list");
+const project_list = document.getElementById("#projectList");
 populateProjects();
 
 function populateProjects() {
