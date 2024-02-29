@@ -18,14 +18,14 @@ const UserProjects = {
     projectList: [],
 }
 
-function newProject(name, src_dir, dest_dir, install_dir) {
+function newProject(name, srcDir, destDir, installDir) {
     let newProj = Object.create(Project);
     newProj.name = name;
-    newProj.srcDir = src_dir;
-    newProj.destDir = dest_dir;
-    newProj.filepath = path.join(install_dir, name);
+    newProj.srcDir = srcDir;
+    newProj.destDir = destDir;
+    newProj.filepath = path.join(installDir, name);
     createProjectDir(newProj);
-    //addProject(UserProjects, newProj); // should we do this here?
+    addProject(newProj);
     return newProj;
 }
 
@@ -84,8 +84,8 @@ function generateXMLs(project, infoForXML, files) {
 
 function saveProject(project) {
     // save to this.save_dir
-    console.log('filepath:'+project.filepath);
-    console.log('name:'+project.name);
+    console.log('filepath:' + project.filepath);
+    console.log('name:' + project.name);
     let stored_project_file_path = path.join(project.filepath, project.name + ".json");
     console.log(JSON.stringify(project));
     fs.writeFile(stored_project_file_path, JSON.stringify(project), err => {
@@ -93,18 +93,16 @@ function saveProject(project) {
     });
 }
 
-function newUserProjects() {
-    let all_user_projects = Object.create(UserProjects);
-    // all_user_projects.projectList = []; ?? katie removed, do we need?
-    return all_user_projects;
+function newUserProjects() { // TODO double check this works
+    return Object.create(UserProjects);
 }
 
 function userProjectsFromJson(json) {
     return JSON.parse(json);
 }
 
-function addProject(all_user_projects, project) {
-    all_user_projects.projectList.push(project);
+function addProject(project) { // remove all_user_projects
+    UserProjects.projectList.push(project);
 }
 
 function getProject(all_user_projects, project_name) {

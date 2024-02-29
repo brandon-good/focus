@@ -19,7 +19,7 @@ const SONY_RAW_EXTENSION = '.ARW';
 
 const userdata_dir = app.getPath('userData');
 const install_dir_filename = 'install_directory.txt';
-let install_dir = path.join(app.getPath('home'), 'Focus');
+let installDir = path.join(app.getPath('home'), 'Focus');
 
 let mainWindow;
 let selectInstallPopup;
@@ -43,7 +43,7 @@ function createMainWindow() {
   // Open the DevTools.
   if (isDev) mainWindow.webContents.openDevTools();
 
-  proj.loadUserProjects(install_dir);
+  proj.loadUserProjects(installDir);
 
   // and load the index.html of the app.
   mainWindow.loadFile('index.html');
@@ -96,7 +96,7 @@ function configureInstallationDirectory() {
 		if (err) {
 			createInstallPopup();
 		} else {
-			install_dir = content.toString().replace(/(\r\n|\n|\r)/gm, "");
+			installDir = content.toString().replace(/(\r\n|\n|\r)/gm, "");
 			verifyInstallDirectory();
 			createMainWindow();
 		}
@@ -105,12 +105,11 @@ function configureInstallationDirectory() {
 }
 
 function verifyInstallDirectory() {
-	if (!fs.existsSync(install_dir)) fs.mkdirSync(install_dir);
-
+	if (!fs.existsSync(installDir)) fs.mkdirSync(installDir);
 }
 
 function save_user_data() {
-	proj.saveUserProjects(proj.UserProjects, install_dir);
+	proj.saveUserProjects(proj.UserProjects, installDir);
 	currently_open_projects.forEach(thisProj => proj.saveProject(thisProj));
 }
 
@@ -134,7 +133,7 @@ let rmdir = function (dir) {
 }
 
 function uninstall_app() {
-	rmdir(install_dir);
+	rmdir(installDir);
 	let install_dir_file = path.join(userdata_dir, install_dir_filename);
 	fs.unlinkSync(install_dir_file);
 }
@@ -148,7 +147,7 @@ ipcMain.on('import_files', (e, { src_dir, dest_dir, }) => {
 
 ipcMain.on('install_directory_selected', (e, { dir,}) => {
   console.log('installation dir: ' + dir)
-	install_dir = dir;
+	installDir = dir;
 
 	// save to file
 	const install_dir_file = path.join(userdata_dir, install_dir_filename);
@@ -161,7 +160,7 @@ ipcMain.on('install_directory_selected', (e, { dir,}) => {
 });
 
 ipcMain.handle('get_default_install_location', async (event, args) => {
-	return install_dir;
+	return installDir;
 });
 
 ipcMain.handle('add_focus_to_filepath', async (event, args) => {
@@ -169,8 +168,7 @@ ipcMain.handle('add_focus_to_filepath', async (event, args) => {
 });
 
 ipcMain.handle('dialog', async (event, method, params) => {
-	const result = await dialog[method](params);
-	return result;
+	return await dialog[method](params);
 });
 
 ipcMain.handle('get_project_names', async (event, args) => {
@@ -188,7 +186,7 @@ ipcMain.on('project_selected', async (event, args) => {
 	currently_open_projects.push(project);
 
 	// set current scene to that for the project
-	mainWindow.loadFile('project.html');
+	await mainWindow.loadFile('project.html');
 });
 
 ipcMain.handle('get_currently_open_projects', async (event, args) => {
@@ -196,7 +194,7 @@ ipcMain.handle('get_currently_open_projects', async (event, args) => {
 })
 
 ipcMain.on('return_index', async (event, args) => {
-	mainWindow.loadFile('index.html');
+	await mainWindow.loadFile('index.html');
 	// TODO close currently active project
 
 	// saves and removes all active projects
@@ -205,11 +203,11 @@ ipcMain.on('return_index', async (event, args) => {
 });
 
 ipcMain.on('start_create_project', async (event, args) => {
-  mainWindow.loadFile('new_project.html');
+  await mainWindow.loadFile('new_project.html');
 });
 
 ipcMain.on('cancel_new_project', async (event, args) => {
-	mainWindow.loadFile('index.html'); // return to main display
+	await mainWindow.loadFile('index.html'); // return to main display
 })
 
 ipcMain.on('create_new_project', async(event, args) => {
@@ -218,8 +216,7 @@ ipcMain.on('create_new_project', async(event, args) => {
 		return;
 	}
 
-	let newProj = proj.new_project(args.name, args.srcDir, args.destDir, install_dir);
-	proj.addProject(proj.UserProjects, newProj);
+	let newProj = proj.new_project(args.name, args.srcDir, args.destDir, installDir);
 	currently_open_projects.push(newProj);
 	console.log('open: ' + currently_open_projects);
 
@@ -236,7 +233,7 @@ ipcMain.on('create_new_project', async(event, args) => {
 	);
 
 	// TODO update index.html with new project
-	mainWindow.loadFile('index.html'); // return to main display
+	await mainWindow.loadFile('index.html'); // return to main display
 
 	// TODO open new window with project
 
