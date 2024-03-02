@@ -16,7 +16,7 @@ const dialogConfig = {
 	properties: ['openDirectory']
 };
 function select_src(event) {
-	electron.dialog('showOpenDialog', { title: 'Choose Source Directory', buttonLabel: "Choose Directory", properties: ['openDirectory', 'createDirectory'] }).then(import_dir => {
+	electron.dialog('showOpenDialog', dialogConfig).then(import_dir => {
 		if (!import_dir.canceled) {
 			src_dir = import_dir.filePaths[0];
 			src_display.innerText = src_dir;
@@ -25,7 +25,11 @@ function select_src(event) {
 }
 
 function select_dest(event) {
-	electron.dialog('showOpenDialog', dialogConfig).then(import_dir => {
+	electron.dialog('showOpenDialog', {
+		title: 'Choose Directory',
+		buttonLabel: 'Choose Directory',
+		properties: ['openDirectory', 'createDirectory']
+	}).then(import_dir => {
 		if (!import_dir.canceled) {
 			dest_dir = import_dir.filePaths[0];
 			dest_display.innerText = dest_dir;
