@@ -4,6 +4,7 @@ const fs = require('fs');
 const console = require('console')
 const path = require('node:path')
 const util = require('util');
+const extractd = require('extractd')
 const js2xmlparser = require('js2xmlparser');
 //const projects = require('./projects.js');
 
@@ -25,45 +26,45 @@ let user_projects;
 let currently_open_projects = [];
 
 function createMainWindow() {
-  // Create the browser window.
-  mainWindow = new BrowserWindow({
-    width: isDev ? 1600 : 800,
-    height: 600,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: true,
-    }
-  })
+	// Create the browser window.
+	mainWindow = new BrowserWindow({
+		width: isDev ? 1600 : 800,
+		height: 600,
+		webPreferences: {
+			preload: path.join(__dirname, 'preload.js'),
+			contextIsolation: true,
+			nodeIntegration: true,
+		}
+	})
 
-  // Open the DevTools.
-  if (isDev)
-    mainWindow.webContents.openDevTools();
+	// Open the DevTools.
+	if (isDev)
+		mainWindow.webContents.openDevTools();
 
 	load_user_projects(install_dir);
 
-  // and load the index.html of the app.
-  mainWindow.loadFile('index.html');
+	// and load the index.html of the app.
+	mainWindow.loadFile('index.html');
 }
 
 function createInstallPopup() {
-  // Create the browser window.
-  selectInstallPopup = new BrowserWindow({
-    width: isDev ? 1600 : 800,
-    height: 600,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: true,
-    }
-  })
+	// Create the browser window.
+	selectInstallPopup = new BrowserWindow({
+		width: isDev ? 1600 : 800,
+		height: 600,
+		webPreferences: {
+			preload: path.join(__dirname, 'preload.js'),
+			contextIsolation: true,
+			nodeIntegration: true,
+		}
+	})
 
-  // Open the DevTools.
-  if (isDev)
-    selectInstallPopup.webContents.openDevTools();
+	// Open the DevTools.
+	if (isDev)
+		selectInstallPopup.webContents.openDevTools();
 
-  // and load the index.html of the app.
-  selectInstallPopup.loadFile('config_install.html');
+	// and load the index.html of the app.
+	selectInstallPopup.loadFile('config_install.html');
 }
 
 // This method will be called when Electron has finished
@@ -72,19 +73,19 @@ function createInstallPopup() {
 app.whenReady().then(() => {
 	configureInstallationDirectory();
 
-  app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
-  })
+	app.on('activate', function () {
+		// On macOS it's common to re-create a window in the app when the
+		// dock icon is clicked and there are no other windows open.
+		if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
+	})
 })
 
 const copyFilePromise = util.promisify(fs.copyFile);
 function copyFiles(srcDir, destDir, files) {
-  console.log('files to copy ' + files);
-  return Promise.all(files.map(f => {
-    return copyFilePromise(path.join(srcDir, f), path.join(destDir, f));
-  }));
+	console.log('files to copy ' + files);
+	return Promise.all(files.map(f => {
+		return copyFilePromise(path.join(srcDir, f), path.join(destDir, f))
+	}));
 }
 
 function configureInstallationDirectory() {
@@ -97,7 +98,7 @@ function configureInstallationDirectory() {
 			verifyInstallDirectory();
 			createMainWindow();
 		}
-	});		
+	});
 
 }
 
@@ -113,13 +114,13 @@ function save_user_data() {
 
 let rmdir = function (dir) {
 	let list = fs.readdirSync(dir);
-	for(let i = 0; i < list.length; i++) {
+	for (let i = 0; i < list.length; i++) {
 		let filename = path.join(dir, list[i]);
 		let stat = fs.statSync(filename);
 
-		if(filename === "." || filename === "..") {
+		if (filename === "." || filename === "..") {
 			// pass these files
-		} else if(stat.isDirectory()) {
+		} else if (stat.isDirectory()) {
 			// rmdir recursively
 			rmdir(filename);
 		} else {
@@ -131,7 +132,7 @@ let rmdir = function (dir) {
 }
 
 function uninstall_app() {
-	rmdir(install_dir);		
+	rmdir(install_dir);
 	let install_dir_file = path.join(userdata_dir, install_dir_filename);
 	fs.unlinkSync(install_dir_file);
 }
@@ -139,18 +140,19 @@ function uninstall_app() {
 
 // IPC HANDLERS
 ipcMain.on('import_files', (e, { src_dir, dest_dir, }) => {
-  console.log('src dir: ' + src_dir)
-  console.log('dest dir: ' + dest_dir)
+	console.log('src dir: ' + src_dir)
+	console.log('dest dir: ' + dest_dir)
 });
 
-ipcMain.on('install_directory_selected', (e, { dir,}) => {
-  console.log('installation dir: ' + dir)
+ipcMain.on('install_directory_selected', (e, { dir, }) => {
+	console.log('installation dir: ' + dir)
 	install_dir = dir;
 
 	// save to file
 	const install_dir_file = path.join(userdata_dir, install_dir_filename);
 	fs.writeFile(install_dir_file, dir, err => {
-		if (err) console.log("ERROR INITIALIZING USER INSTALL LOCATION");});
+		if (err) console.log("ERROR INITIALIZING USER INSTALL LOCATION");
+	});
 
 	selectInstallPopup.close();
 	verifyInstallDirectory();
@@ -171,7 +173,7 @@ ipcMain.handle('dialog', async (event, method, params) => {
 });
 
 ipcMain.handle('get_project_names', async (event, args) => {
-	return user_projects.project_list.map( (proj) => proj.name);
+	return user_projects.project_list.map((proj) => proj.name);
 });
 
 ipcMain.on('project_selected', async (event, args) => {
@@ -195,21 +197,21 @@ ipcMain.handle('get_currently_open_projects', async (event, args) => {
 ipcMain.on('return_index', async (event, args) => {
 	mainWindow.loadFile('index.html');
 	// TODO close currently active project
-	
+
 	// saves and removes all active projects
-	currently_open_projects.forEach( (proj) => save_project(proj) );
+	currently_open_projects.forEach((proj) => save_project(proj));
 	currently_open_projects = [];
-}); 
+});
 
 ipcMain.on('start_create_project', async (event, args) => {
-  mainWindow.loadFile('new_project.html');
+	mainWindow.loadFile('new_project.html');
 });
 
 ipcMain.on('cancel_new_project', async (event, args) => {
 	mainWindow.loadFile('index.html'); // return to main display	
 })
 
-ipcMain.on('create_new_project', async(event, args) => {
+ipcMain.on('create_new_project', async (event, args) => {
 	if (!verify_new_project(args.name, args.src_dir, args.dest_dir)) {
 		console.log("INVALID PROJECT");
 		return;
@@ -232,21 +234,29 @@ ipcMain.on('create_new_project', async(event, args) => {
 		})
 	);
 
+	generate_jpg_previews(proj, path.join(proj.filepath, PREVIEW_FOLDER_NAME),
+		fs.readdirSync(proj.src_dir).filter(file => {
+			return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
+		}).map(file => {
+			return path.join(args.src_dir, file)
+		})
+	);
+
 	// TODO update index.html with new project
 	mainWindow.loadFile('index.html'); // return to main display	
-	
+
 	// TODO open new window with project
-	
+
 	// this should occur in the background hopefully
-  copyFiles(args.src_dir, args.dest_dir,
-    fs.readdirSync(args.src_dir).filter(file => {
-      return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
-    })
-  ).then(() => {
-    console.log("done");
-  }).catch(err => {
-    console.log(err);
-  });
+	copyFiles(args.src_dir, args.dest_dir,
+		fs.readdirSync(args.src_dir).filter(file => {
+			return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
+		})
+	).then(() => {
+		console.log("done");
+	}).catch(err => {
+		console.log(err);
+	});
 })
 
 ipcMain.on('uninstall_app', async (event, args) => {
@@ -257,7 +267,7 @@ ipcMain.on('uninstall_app', async (event, args) => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', function () {
-  if (!isMac) app.quit();
+	if (!isMac) app.quit();
 	save_user_data();
 })
 
@@ -301,19 +311,32 @@ function archive(project) {
 function create_project_dir(project) {
 	// check if this exists first inside install_dir, if not create it
 	let thumb_loc = path.join(project.filepath, PREVIEW_FOLDER_NAME);
-	if (! fs.existsSync(project.filepath)) fs.mkdirSync(project.filepath);
-	if (! fs.existsSync(thumb_loc)) fs.mkdirSync(thumb_loc);
+	if (!fs.existsSync(project.filepath)) fs.mkdirSync(project.filepath);
+	if (!fs.existsSync(thumb_loc)) fs.mkdirSync(thumb_loc);
 
 	save_project(project);
 
 	// TODO save the jpg images
-	
+
 }
 
-function generate_thumbnails(project, files) {
+function generate_jpg_previews(project, thumb_loc, files) {
 	// files is passed as an argument because we might load the files from elsewhere
 	// it is possible that we have to recreate the thumbnails based on the destination copied files
 	// DO NOT OVERWRITE EXISTING FILES
+
+	console.log('begin preview generation');
+	console.log(thumb_loc)
+	console.log(files);
+	(async () => {
+		const done = await extractd.generate(files, {
+			'destination': thumb_loc,
+			'persist': true
+		})
+		console.dir(done)
+	})();
+
+	console.log('finished preview generation');
 
 }
 
@@ -340,12 +363,12 @@ function generate_xmls(project, xml_info, files) {
 
 function save_project(project) {
 	// save to this.save_dir
-	console.log('filepath:'+project.filepath);
-	console.log('name:'+project.name);
-	let stored_project_file_path = path.join(project.filepath, project.name + ".json");	
+	console.log('filepath:' + project.filepath);
+	console.log('name:' + project.name);
+	let stored_project_file_path = path.join(project.filepath, project.name + ".json");
 	console.log(JSON.stringify(project));
 	fs.writeFile(stored_project_file_path, JSON.stringify(project), err => {
-		if (err) console.log("ERROR SAVING USER PROJECT " + project.name);	
+		if (err) console.log("ERROR SAVING USER PROJECT " + project.name);
 	});
 }
 
@@ -379,13 +402,13 @@ function save_user_projects(user_projects, install_dir) {
 	// save to install_dir	
 	let stored_projects_file_path = path.join(install_dir, projects_json_filename);
 	fs.writeFile(stored_projects_file_path, JSON.stringify(user_projects), err => {
-		if (err) console.log("ERROR SAVING USER PROJECT LIST");	
+		if (err) console.log("ERROR SAVING USER PROJECT LIST");
 	});
 }
 
 function load_user_projects(install_dir) {
 	// returns a user projects object
-	let stored_projects_file_path = path.join(install_dir, projects_json_filename);	
+	let stored_projects_file_path = path.join(install_dir, projects_json_filename);
 	fs.readFile(stored_projects_file_path, (err, content) => {
 		if (err) {
 			user_projects = new_user_projects();
@@ -397,10 +420,10 @@ function load_user_projects(install_dir) {
 
 function verify_new_project(name, src_dir, dest_dir) {
 	// return true is this is valid, false if not valid
-	
+
 	// check unique name
 	let duplicate = false;
-	user_projects.project_list.forEach(proj => {if (name === proj.name) duplicate = true});
+	user_projects.project_list.forEach(proj => { if (name === proj.name) duplicate = true });
 
 	// check src and dest directories
 	return !duplicate && fs.existsSync(src_dir) && fs.existsSync(dest_dir)
