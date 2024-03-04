@@ -220,13 +220,11 @@ ipcMain.on('create_new_project', async(event, args) => {
 	currently_open_projects.push(newProj);
 	console.log('open: ' + currently_open_projects);
 
-	const defaultInfoXML = {
-		filename: "",
+	let defaultInfoXMP = {
 		rating: "",
-		tags: ""
+		subject: "" // alternative name for tags, needs to be under a built-in XMP tag
 	};
-
-	proj.generateXMLs(newProj, defaultInfoXML,
+	proj.generateXMPs(newProj, defaultInfoXMP,
 		fs.readdirSync(args.srcDir).filter(file => {
 			return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
 		})

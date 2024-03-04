@@ -1,5 +1,6 @@
 
-const js2xmlparser = require('js2xmlparser');
+const { exec } = require('child_process');
+
 const path = require('node:path')
 const fs = require('fs');
 
@@ -61,23 +62,36 @@ function generateThumbnails(project, files) {
 
 }
 
-function generateXMLs(project, infoForXML, files) {
+function generateXMPs(project, XMPInfo, files) {
     // files is passed as an argument because we might load the files from elsewhere
     // it is possible that we have to recreate the thumbnails based on the destination copied files
     // DO NOT OVERWRITE EXISTING FILES
     files.forEach(file => {
-        let xmlFile = path.basename(file, path.extname(file)) + ".xml";
-        const filePath = path.join(project.destDir, xmlFile);
+        let xmpFile = path.basename(file, path.extname(file)) + ".XMP";
+        const filePath = path.join(project.destDir, xmpFile);
         // skip if the file exists already
         if (fs.existsSync(filePath)) {
             console.log(filePath + 'already exists. Skipping.');
             return;
         }
-        // otherwise generate xml and save
-        infoForXML.filename = file;
-        const xml = js2xmlparser.parse('root', infoForXML);
-        fs.writeFile(filePath, xml, err => {
-            if (err) console.log("ERROR SAVING PROJECT XMLS " + project.name);
+
+        let command = `./exiftool/exiftool -o ${filePath}`;
+        for (const [key, value] of Object.entries(XMPInfo)) {
+            command += ` -XMP:${key}="${value}"`;
+        }
+        command += ` -tagsFromFile @ -all:all "${path.join(project.destDir, file)}"`;
+
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error creating/updating XMP file: ${error.message}`);
+                return;
+            }
+            if (stderr) {
+                console.error(`stderr: ${stderr}`);
+                return;
+            }
+            console.log(`XMP file created/updated successfully: ${xmpFile}`);
+            console.log(stdout);
         });
     });
 }
@@ -149,7 +163,7 @@ function verifyNewProject(name, srcDir, destDir) {
 module.exports = {
     new_project: newProject,
     generateThumbnails,
-    generateXMLs,
+    generateXMPs,
     saveProject,
     addProject,
     getProject,
