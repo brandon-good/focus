@@ -250,7 +250,17 @@ ipcMain.on('create_new_project', async(event, args) => {
 })
 
 ipcMain.on('uninstall_app', async (event, args) => {
-	uninstall_app();
+	await uninstall_app();
+	// Retrieve all open windows
+	const allWindows = BrowserWindow.getAllWindows();
+
+	// Loop through all windows and close them
+	allWindows.forEach(window => {
+		window.close();
+	});
+
+	// Optionally, quit the app after all windows are closed
+	app.quit();
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common
