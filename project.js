@@ -6,6 +6,13 @@ const fs = require('fs');
 
 const JSON_PROJECTS_FILENAME = "projects.json";
 const PREVIEW_FOLDER_NAME = 'previews';
+const SONY_RAW_EXTENSION = '.ARW';
+
+const isMac = process.platform === 'darwin';
+const isLinux = process.platform === 'linux';
+const exiftoolExecutable = !isMac && !isLinux ? 'exiftool-windows.exe' : 'exiftool';
+const EXIFTOOL_PATH = path.join(__dirname, "exiftool", exiftoolExecutable);
+console.log("EXE PATH: " + EXIFTOOL_PATH);
 
 const Project = {
     name: "NO_NAME",
@@ -62,38 +69,70 @@ function generateThumbnails(project, files) {
 
 }
 
-function generateXMPs(project, XMPInfo, files) {
+async function generateXMPs(project, XMPInfo) {
     // files is passed as an argument because we might load the files from elsewhere
     // it is possible that we have to recreate the thumbnails based on the destination copied files
     // DO NOT OVERWRITE EXISTING FILES
+    let files = fs.readdirSync(project.srcDir).filter(file => {
+        return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION;
+    });
+
     files.forEach(file => {
-        let xmpFile = path.basename(file, path.extname(file)) + ".XMP";
-        const filePath = path.join(project.destDir, xmpFile);
-        // skip if the file exists already
-        if (fs.existsSync(filePath)) {
-            console.log(filePath + 'already exists. Skipping.');
+        const baseName = path.basename(file, path.extname(file));
+        const xmpFileName = baseName + '.XMP';
+        const xmpFilePath = path.join(project.destDir, xmpFileName);
+
+        // Skip if the XMP file already exists
+        if (fs.existsSync(xmpFilePath)) {
+            console.log(`${xmpFilePath} already exists. Skipping.`);
             return;
         }
 
-        let command = `./exiftool/exiftool -o ${filePath}`;
+        // build exiftool command
+        let command = `${EXIFTOOL_PATH} -o "${xmpFilePath}"`;
         for (const [key, value] of Object.entries(XMPInfo)) {
-            command += ` -XMP:${key}="${value}"`;
+            const escapedValue = value.toString().replace(/"/g, '\\"');
+            command += ` -XMP:${key}="${escapedValue}"`;
         }
-        command += ` -tagsFromFile @ -all:all "${path.join(project.destDir, file)}"`;
 
-        exec(command, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Error creating/updating XMP file: ${error.message}`);
-                return;
-            }
-            if (stderr) {
-                console.error(`stderr: ${stderr}`);
-                return;
-            }
-            console.log(`XMP file created/updated successfully: ${xmpFile}`);
-            console.log(stdout);
-        });
+        // execute command
+        const result = execute(command);
+        if (result === false) {
+            console.log("Error creating/updating XMP file");
+        } else {
+            console.log(`XMP file created/updated successfully: ${xmpFileName}`);
+        }
     });
+}
+
+function execute(command) {
+    return exec(command, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error executing command: ${error.message}`);
+            return false;
+        }
+        if (stderr) {
+            console.error(`stderr: ${stderr}`);
+            return false;
+        }
+        return stdout;
+    });
+}
+
+async function getRating(file) {
+    const result = execute(`${EXIFTOOL_PATH} -XMP:Rating "${file}" | awk -F': ' '{print $2}'`);
+    if (result === false) {
+        console.log(`Error reading rating from ${file}`);
+    }
+    return result;
+}
+
+async function getTags(file) {
+    const result = execute(`${EXIFTOOL_PATH} -XMP:Subject "${file}" | awk -F': ' '{print $2}'`);
+    if (result === false) {
+        console.log(`Error reading rating from ${file}`);
+    }
+    return result;
 }
 
 function saveProject(project) {
@@ -170,6 +209,8 @@ module.exports = {
     saveUserProjects,
     loadUserProjects,
     verifyNewProject,
+    getRating,
+    getTags,
 
     // the below are unused in main as of right now, might be able to delete?
     UserProjects,

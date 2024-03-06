@@ -115,17 +115,17 @@ function save_user_data() {
 
 let rmdir = function (dir) {
 	let list = fs.readdirSync(dir);
-	for(let i = 0; i < list.length; i++) {
+	for (let i = 0; i < list.length; i++) {
 		let filename = path.join(dir, list[i]);
 		let stat = fs.statSync(filename);
 
-		if(filename === "." || filename === "..") {
+		if (filename === "." || filename === "..") {
 			// pass these files
 		} else if(stat.isDirectory()) {
 			// rmdir recursively
 			rmdir(filename);
 		} else {
-			// rm fiilename
+			// rm filename
 			fs.unlinkSync(filename);
 		}
 	}
@@ -220,16 +220,6 @@ ipcMain.on('create_new_project', async(event, args) => {
 	currently_open_projects.push(newProj);
 	console.log('open: ' + currently_open_projects);
 
-	let defaultInfoXMP = {
-		rating: "",
-		subject: "" // alternative name for tags, needs to be under a built-in XMP tag
-	};
-	proj.generateXMPs(newProj, defaultInfoXMP,
-		fs.readdirSync(args.srcDir).filter(file => {
-			return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
-		})
-	);
-
 	// TODO update index.html with new project
 	await mainWindow.loadFile('index.html'); // return to main display
 
@@ -245,6 +235,13 @@ ipcMain.on('create_new_project', async(event, args) => {
   }).catch(err => {
     console.log(err);
   });
+
+	let defaultInfoXMP = {
+		"Rating": 3,
+		"Subject": ["temp", "test"] // alternative name for tags, needs to be under a built-in XMP tag
+	};
+
+	await proj.generateXMPs(newProj, defaultInfoXMP);
 })
 
 ipcMain.on('uninstall_app', async (event, args) => {
