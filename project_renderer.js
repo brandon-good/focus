@@ -9,7 +9,7 @@ function setupPage(projects) {
 
 	// label everything
 	pageTitle.innerText = project.name;
-	destLabel.innerText = project.dest_dir;
+	destLabel.innerText = project.destDir;
 }
 
 returnBtn.addEventListener('click', () => ipcRenderer.send('return_index', {}))

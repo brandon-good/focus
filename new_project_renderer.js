@@ -7,8 +7,8 @@ const name_field = document.getElementById("#project_name");
 const create_btn = document.getElementById("#new_project_create_btn")
 const cancel_btn = document.getElementById("#new_project_cancel_btn")
 
-let src_dir;
-let dest_dir;
+let srcDir;
+let destDir;
 
 const dialogConfig = {
 	title: 'Choose Directory',
@@ -18,8 +18,8 @@ const dialogConfig = {
 function select_src(event) {
 	electron.dialog('showOpenDialog', dialogConfig).then(import_dir => {
 		if (!import_dir.canceled) {
-			src_dir = import_dir.filePaths[0];
-			src_display.innerText = src_dir;
+			srcDir = import_dir.filePaths[0];
+			src_display.innerText = srcDir;
 		}
 	});
 }
@@ -31,15 +31,15 @@ function select_dest(event) {
 		properties: ['openDirectory', 'createDirectory']
 	}).then(import_dir => {
 		if (!import_dir.canceled) {
-			dest_dir = import_dir.filePaths[0];
-			dest_display.innerText = dest_dir;
+			destDir = import_dir.filePaths[0];
+			dest_display.innerText = destDir;
 		}
 	});
 }
 
 function create_project(event) {
 	let name = name_field.value;
-	ipcRenderer.send('create_new_project', { name, src_dir, dest_dir, })
+	ipcRenderer.send('create_new_project', { name, srcDir, destDir, })
 }
 
 function cancel_project(event) {

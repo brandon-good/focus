@@ -6,12 +6,13 @@ const dialogConfig = {
     properties: ['openDirectory']
 };
 
-const project_list = document.getElementById("#project_list");
+const project_list = document.getElementById("#projectList");
 populateProjects();
 
 function populateProjects() {
 	electron.get_project_names('get_project_names', {}).then( (proj_names) => {
 		proj_names.forEach((name) => {
+			console.log("Proj:" + name);
 			let entry = document.createElement('li');
 			let btn = document.createElement('button');
 			btn.textContent = name;
