@@ -1,0 +1,22 @@
+* {
+	box-sizing: border-box;
+	color: white;
+	font-family: "Google Sans", "Roboto", "Arial", "sans-serif";
+	margin: 0;
+	padding: 0;
+}
+
+#root {
+	background-color: #202124;
+	height: 100vh;
+	padding: 1rem;
+}
+
+h1 {
+	color: white;
+}
+
+@font-face {
+	font-family: "Google Sans";
+	src: url("./fonts/Google-Sans.ttf");
+}
