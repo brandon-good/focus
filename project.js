@@ -3,6 +3,8 @@ const { exec } = require('child_process');
 
 const path = require('node:path')
 const fs = require('fs');
+const console = require("console");
+const extractd = require("extractd");
 
 const JSON_PROJECTS_FILENAME = "projects.json";
 const PREVIEW_FOLDER_NAME = 'previews';
@@ -13,24 +15,26 @@ const isLinux = process.platform === 'linux';
 const exiftoolExecutable = !isMac && !isLinux ? 'exiftool-windows.exe' : 'exiftool';
 const EXIFTOOL_PATH = path.join(__dirname, "exiftool", exiftoolExecutable);
 
-const Project = {
-    name: "NO_NAME",
-    srcDir: "NO_SRC",
-    destDir: "NO_DEST",
-    filepath: "NO_SAVE_LOC",
-    archived: false,
+
+class Project {
+    constructor(name, srcDir, destDir, installDir) {
+        this.name = name;
+        this.srcDir = srcDir;
+        this.destDir = destDir;
+        this.filepath = path.join(installDir, name);
+        this.archived = false;
+        this.open = true;
+    }
 }
 
 let UserProjects = {
     projectList: [],
+    openProjects: []
 }
 
 function newProject(name, srcDir, destDir, installDir) {
-    let newProj = Object.create(Project);
-    newProj.name = name;
-    newProj.srcDir = srcDir;
-    newProj.destDir = destDir;
-    newProj.filepath = path.join(installDir, name);
+    let newProj = new Project(name, srcDir, destDir, installDir);
+
     createProjectDir(newProj);
     addProject(newProj);
     return newProj;
@@ -61,14 +65,26 @@ function createProjectDir(project) {
 
 }
 
-function generateThumbnails(project, files) {
+function generate_jpg_previews(project, thumb_loc, files) {
     // files is passed as an argument because we might load the files from elsewhere
     // it is possible that we have to recreate the thumbnails based on the destination copied files
     // DO NOT OVERWRITE EXISTING FILES
 
+    console.log("begin preview generation");
+    console.log(thumb_loc);
+    console.log(files);
+    (async () => {
+        const done = await extractd.generate(files, {
+            destination: thumb_loc,
+            persist: true,
+        });
+        console.dir(done);
+    })();
+
+    console.log("finished preview generation");
 }
 
-async function generateXMPs(project, XMPInfo) {
+function generateXMPs(project, XMPInfo) {
     // files is passed as an argument because we might load the files from elsewhere
     // it is possible that we have to recreate the thumbnails based on the destination copied files
     // DO NOT OVERWRITE EXISTING FILES
@@ -197,9 +213,36 @@ function verifyNewProject(name, srcDir, destDir) {
     return !duplicate && fs.existsSync(srcDir) && fs.existsSync(destDir)
 }
 
+function loadProjects(install_dir) {
+    // returns a user projects object
+    const stored_projects_file_path = path.join(install_dir, JSON_PROJECTS_FILENAME);
+    fs.readFile(stored_projects_file_path, (err, content) => {
+        if (err) {
+            fs.writeFile(
+                stored_projects_file_path,
+                JSON.stringify(UserProjects.projectList),
+                (err) => {
+                    if (err) console.log("ERROR SAVING USER PROJECT LIST");
+                }
+            );
+            return "new-project";
+        } else {
+            UserProjects.projectList = userProjectsFromJson(content);
+            UserProjects.openProjects = UserProjects.projectList.filter((project) => project.open);
+            return UserProjects.openProjects.length > 0 ? "projects" : "home";
+        }
+    });
+    return "new-project";
+}
+
+function saveUserData(install_dir) {
+    saveUserProjects(UserProjects, install_dir);
+    UserProjects.openProjects.forEach(thisProj => saveProject(thisProj));
+}
+
 module.exports = {
-    new_project: newProject,
-    generateThumbnails,
+    newProject,
+    generate_jpg_previews,
     generateXMPs,
     saveProject,
     addProject,
@@ -209,6 +252,8 @@ module.exports = {
     verifyNewProject,
     getRating,
     getTags,
+    loadProjects,
+    saveUserData,
 
     // the below are unused in main as of right now, might be able to delete?
     UserProjects,

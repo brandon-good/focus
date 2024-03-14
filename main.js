@@ -4,124 +4,107 @@ const proj = require('./project');
 
 
 // Modules to control application life and create native browser window
-const { app, BrowserWindow, dialog, ipcMain } = require('electron')
-const fs = require('fs');
-const console = require('console')
-const path = require('node:path')
-const util = require('util');
-//const projects = require('./projects.js');
+const { app, BrowserWindow, dialog, ipcMain } = require("electron");
+const fs = require("fs");
+const console = require("console");
+const path = require("node:path");
+const util = require("util");
 
-const isMac = process.platform === 'darwin';
-const isLinux = process.platform === 'linux';
-const isDev = process.env.NODE_ENV !== 'development';
-const PREVIEW_FOLDER_NAME = 'previews';
-const SONY_RAW_EXTENSION = '.ARW';
+const isMac = process.platform === "darwin";
+const isLinux = process.platform === "linux"; // do we need this?
+const isDev = process.env.NODE_ENV === "development";
+const PREVIEW_FOLDER_NAME = "previews";
+const SONY_RAW_EXTENSION = ".ARW";
 
-const userdata_dir = app.getPath('userData');
-const install_dir_filename = 'install_directory.txt';
-let installDir = path.join(app.getPath('home'), 'Focus');
+
+const userdata_dir = app.getPath("userData");
+const install_dir_filename = "install_directory.txt";
+let install_dir = path.join(app.getPath("home"), "Focus");
 
 let mainWindow;
-let selectInstallPopup;
-let currently_open_project_windows = [];
 
-// let user_projects;
-let currently_open_projects = [];
-
-function createMainWindow() {
-  // Create the browser window.
-  mainWindow = new BrowserWindow({
-    width: isDev ? 1600 : 800,
-    height: 600,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: true,
-    }
-  })
-
-  // Open the DevTools.
-  if (isDev) mainWindow.webContents.openDevTools();
-
-  proj.loadUserProjects(installDir);
-
-  // and load the index.html of the app.
-  mainWindow.loadFile('index.html');
+function switchToPage(page) {
+	mainWindow.loadURL(`http://localhost:3000/${page}`);
 }
 
-function createInstallPopup() {
-  // Create the browser window.
-  selectInstallPopup = new BrowserWindow({
-    width: isDev ? 1600 : 800,
-    height: 600,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: true,
-    }
-  })
+function createWindow() {
+	app.commandLine.appendSwitch("disable-web-security");
 
-  // Open the DevTools.
-  if (isDev)
-    selectInstallPopup.webContents.openDevTools();
+	// timeout allows time for React to start
+	setTimeout(() => {
+		// Create the browser window.
+		mainWindow = new BrowserWindow({
+			width: isDev ? 1600 : 800,
+			height: 600,
+			webPreferences: {
+				preload: path.join(__dirname, "preload.js"),
+				contextIsolation: true,
+				webSecurity: false, // temporary hack to load previews
+			},
+		});
+		mainWindow.setMenuBarVisibility(false);
 
-  // and load the index.html of the app.
-  selectInstallPopup.loadFile('config_install.html');
+		// Open the DevTools.
+		if (isDev) mainWindow.webContents.openDevTools();
+
+		configureInstallationDirectory();
+	}, 5000);
 }
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-	configureInstallationDirectory();
-
-  app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
-  })
-})
+	createWindow();
+	app.on("activate", function () {
+		// On macOS it's common to re-create a window in the app when the
+		// dock icon is clicked and there are no other windows open.
+		if (BrowserWindow.getAllWindows().length === 0) createWindow();
+	});
+});
 
 const copyFilePromise = util.promisify(fs.copyFile);
 function copyFiles(srcDir, destDir, files) {
-  console.log('files to copy ' + files);
-  return Promise.all(files.map(f => {
-    return copyFilePromise(path.join(srcDir, f), path.join(destDir, f));
-  }));
+	console.log("files to copy " + files);
+	return Promise.all(
+		files.map((f) =>
+			copyFilePromise(path.join(srcDir, f), path.join(destDir, f))
+		)
+	);
 }
 
 function configureInstallationDirectory() {
-	let install_dir_file = path.join(userdata_dir, install_dir_filename);
-	fs.readFile(install_dir_file, (err, content) => {
+	fs.readFile(path.join(userdata_dir, install_dir_filename), (err, content) => {
 		if (err) {
-			createInstallPopup();
+			switchToPage("config-install");
 		} else {
-			installDir = content.toString().replace(/(\r\n|\n|\r)/gm, "");
+			install_dir = content.toString().replace(/(\r\n|\n|\r)/gm, "");
 			verifyInstallDirectory();
-			createMainWindow();
+			const projectPage = proj.loadProjects(install_dir);
+			switchToPage(projectPage);
 		}
 	});
-
 }
 
 function verifyInstallDirectory() {
-	if (!fs.existsSync(installDir)) fs.mkdirSync(installDir);
+	if (!fs.existsSync(install_dir)) fs.mkdirSync(install_dir);
 }
 
-function save_user_data() {
-	proj.saveUserProjects(proj.UserProjects, installDir);
-	currently_open_projects.forEach(thisProj => proj.saveProject(thisProj));
-}
+// TODO HEAD
+// function save_user_data() {
+// 	proj.saveUserProjects(proj.UserProjects, install_dir);
+// 	currently_open_projects.forEach(thisProj => proj.saveProject(thisProj));
+// }
+
 
 let rmdir = function (dir) {
-	let list = fs.readdirSync(dir);
+	const list = fs.readdirSync(dir);
 	for (let i = 0; i < list.length; i++) {
-		let filename = path.join(dir, list[i]);
-		let stat = fs.statSync(filename);
-
+		const filename = path.join(dir, list[i]);
+		const stat = fs.statSync(filename);
 		if (filename === "." || filename === "..") {
 			// pass these files
-		} else if(stat.isDirectory()) {
+		} else if (stat.isDirectory()) {
 			// rmdir recursively
 			rmdir(filename);
 		} else {
@@ -130,119 +113,175 @@ let rmdir = function (dir) {
 		}
 	}
 	fs.rmdirSync(dir);
-}
+};
 
 function uninstall_app() {
-	rmdir(installDir);
-	let install_dir_file = path.join(userdata_dir, install_dir_filename);
-	fs.unlinkSync(install_dir_file);
+	rmdir(install_dir);
+	fs.unlinkSync(path.join(userdata_dir, install_dir_filename));
 }
 
-
 // IPC HANDLERS
-ipcMain.on('import_files', (e, { src_dir, dest_dir, }) => {
-  console.log('src dir: ' + src_dir)
-  console.log('dest dir: ' + dest_dir)
+
+ipcMain.handle("open-dialog", async (e, args) => {
+	const import_from = await dialog.showOpenDialog({
+		buttonLabel: args.buttonLabel,
+		properties: ["openDirectory"],
+		title: args.title,
+	});
+	return !import_from.canceled
+		? args.configInstall
+			? path.join(import_from.filePaths[0], "Focus")
+			: import_from.filePaths[0]
+		: null;
 });
 
-ipcMain.on('install_directory_selected', (e, { dir,}) => {
-  console.log('installation dir: ' + dir)
-	installDir = dir;
 
+ipcMain.on("set-install-dir", (e, dir) => {
+	console.log('installation dir: ' + dir)
+	// TODO all of the rest of this file is new
 	// save to file
 	const install_dir_file = path.join(userdata_dir, install_dir_filename);
-	fs.writeFile(install_dir_file, dir, err => {
-		if (err) console.log("ERROR INITIALIZING USER INSTALL LOCATION");});
+	fs.writeFile(install_dir_file, dir, (err) => {
+		if (err) console.log("ERROR INITIALIZING INSTALL DIRECTORY");
+	});
 
-	selectInstallPopup.close();
 	verifyInstallDirectory();
-	createMainWindow();
+	proj.loadProjects(dir);
 });
 
-ipcMain.handle('get_default_install_location', async (event, args) => {
-	return installDir;
-});
+// TODO sean removed these
+// ipcMain.handle('get_default_install_location', async (event, args) => {
+// 	return installDir;
+// });
+//
+// ipcMain.handle('add_focus_to_filepath', async (event, args) => {
+// 	return path.join(args, 'Focus');
+// });
+//
+// ipcMain.handle('dialog', async (event, method, params) => {
+// 	return await dialog[method](params);
+// });
+//
+// ipcMain.handle('get_project_names', async (event, args) => {
+// 	return proj.UserProjects.projectList.map( (project) => project.name);
+// });
+//
+// ipcMain.on('project_selected', async (event, args) => {
+// 	let project = proj.getProject(proj.UserProjects, args.name);
+// 	if (project === null) {
+// 		console.log("PROJECT DOES NOT EXIST");
+// 		return null;
+// 	}
+//
+// 	// inform main.js that this project is actively being used
+// 	currently_open_projects.push(project);
+//
+// 	// set current scene to that for the project
+// 	await mainWindow.loadFile('project.html');
+// });
 
-ipcMain.handle('add_focus_to_filepath', async (event, args) => {
-	return path.join(args, 'Focus');
-});
+ipcMain.handle("get-project-names", () => proj.UserProjects.projectList.map((proj) => proj.name));
 
-ipcMain.handle('dialog', async (event, method, params) => {
-	return await dialog[method](params);
-});
-
-ipcMain.handle('get_project_names', async (event, args) => {
-	return proj.UserProjects.projectList.map( (project) => project.name);
-});
-
-ipcMain.on('project_selected', async (event, args) => {
-	let project = proj.getProject(proj.UserProjects, args.name);
-	if (project === null) {
-		console.log("PROJECT DOES NOT EXIST");
-		return null;
+ipcMain.handle("open-project", (e, name) => {
+	const project = proj.UserProjects.projectList.find((new_proj) => new_proj.name === name);
+	if (!proj.UserProjects.openProjects.includes(project)) {
+		proj.UserProjects.openProjects.push(project);
 	}
-
-	// inform main.js that this project is actively being used
-	currently_open_projects.push(project);
-
-	// set current scene to that for the project
-	await mainWindow.loadFile('project.html');
+	switchToPage("projects");
+	return project;
 });
 
-ipcMain.handle('get_currently_open_projects', async (event, args) => {
-	return currently_open_projects;
-})
+ipcMain.handle("get-open-projects", () => proj.UserProjects.openProjects);
 
-ipcMain.on('return_index', async (event, args) => {
-	await mainWindow.loadFile('index.html');
+// TODO HEAD
+// ipcMain.on('start_create_project', async (event, args) => {
+//   await mainWindow.loadFile('new_project.html');
+// });
+//
+// ipcMain.on('cancel_new_project', async (event, args) => {
+// 	await mainWindow.loadFile('index.html'); // return to main display
+// })
+
+// TODO HEAD END SEAN START
+
+ipcMain.on("import_files", (e, { srcDir, destDir }) => {
+	console.log("src dir: " + srcDir);
+	console.log("dest dir: " + destDir);
+});
+
+ipcMain.on("return_index", async (event, args) => {
+	await mainWindow.loadFile("index.html"); // TODO was await
 	// TODO close currently active project
 
 	// saves and removes all active projects
-	currently_open_projects.forEach( (thisProj) => proj.saveProject(thisProj) );
-	currently_open_projects = [];
+	proj.UserProjects.openProjects.forEach((this_proj) => proj.saveProject(this_proj));
+	proj.UserProjects.openProjects = [];
 });
 
-ipcMain.on('start_create_project', async (event, args) => {
-  await mainWindow.loadFile('new_project.html');
+const verifyNewProject = (args) => ({
+	name:
+		args.name.length === 0 ||
+		proj.UserProjects.projectList.some((project) => project.name === args.name),
+	nameText:
+		args.name.length === 0
+			? "Name must be at least one character"
+			: "Name already exists",
+	srcDir: !fs.existsSync(args.srcDir),
+	destDir: !fs.existsSync(args.destDir),
 });
 
-ipcMain.on('cancel_new_project', async (event, args) => {
-	await mainWindow.loadFile('index.html'); // return to main display
-})
-
-ipcMain.on('create_new_project', async(event, args) => {
-	if (!proj.verifyNewProject(args.name, args.srcDir, args.destDir)) {
-		console.log("INVALID PROJECT");
-		return;
+ipcMain.handle("create-project", (e, args) => {
+	const errors = verifyNewProject(args);
+	if (
+		Object.values(errors).some((error) => typeof error === "boolean" && error)
+	) {
+		return errors;
 	}
+	const new_proj = proj.newProject(args.name, args.srcDir, args.destDir, install_dir);
+	proj.createProjectDir(new_proj);
+	proj.addProject(new_proj);
+	proj.UserProjects.openProjects.push(new_proj);
 
-	let newProj = proj.new_project(args.name, args.srcDir, args.destDir, installDir);
-	currently_open_projects.push(newProj);
-	console.log('open: ' + currently_open_projects);
+	proj.generate_jpg_previews(
+		new_proj,
+		path.join(new_proj.filepath, PREVIEW_FOLDER_NAME),
+		fs
+			.readdirSync(new_proj.srcDir)
+			.filter((file) => path.extname(file).toUpperCase() === SONY_RAW_EXTENSION)
+			.map((file) => path.join(args.srcDir, file))
+	);
 
-	// TODO update index.html with new project
-	await mainWindow.loadFile('index.html'); // return to main display
-
-	// TODO open new window with project
+	switchToPage("projects");
 
 	// this should occur in the background hopefully
-  copyFiles(args.srcDir, args.destDir,
-    fs.readdirSync(args.srcDir).filter(file => {
-      return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
-    })
-  ).then(() => {
-    console.log("done");
-  }).catch(err => {
-    console.log(err);
-  });
+	copyFiles(args.srcDir, args.destDir,
+		fs.readdirSync(args.srcDir).filter((file) =>
+			path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
+		))
+		.then(() => {
+			console.log("done");
+		})
+		.catch((err) => {
+			console.log(err);
+		});
 
 	let defaultInfoXMP = {
 		"Rating": 3,
 		"Subject": ["temp", "test"] // alternative name for tags, needs to be under a built-in XMP tag
 	};
 
-	await proj.generateXMPs(newProj, defaultInfoXMP);
-})
+	proj.generateXMPs(new_proj, defaultInfoXMP);
+	return errors;
+});
+
+ipcMain.handle("get-preview-paths", (e, proj) =>
+	fs
+		.readdirSync(path.join(proj.filepath, PREVIEW_FOLDER_NAME))
+		.map((previewPath) =>
+			path.join(proj.filepath, PREVIEW_FOLDER_NAME, previewPath)
+		)
+);
+// TODO SEAN END
 
 ipcMain.on('uninstall_app', async (event, args) => {
 	await uninstall_app();
@@ -256,13 +295,16 @@ ipcMain.on('uninstall_app', async (event, args) => {
 
 	// Optionally, quit the app after all windows are closed
 	app.quit();
-})
+});
 
+// TODO sean deleted
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
-app.on('window-all-closed', function () {
-  if (!isMac) app.quit();
-	save_user_data();
-})
+
+app.on("window-all-closed", function () {
+	// if (!isMac)
+		app.quit();
+	proj.saveUserData(install_dir);
+});
 

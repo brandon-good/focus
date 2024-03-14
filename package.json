@@ -1,22 +1,56 @@
 {
-  "name": "focus",
-  "version": "1.0.0",
-  "productName": "Focus",
-  "description": "cross-platform, speed-centered photo culling app.",
-  "main": "main.js",
-  "scripts": {
-    "start": "electron ."
-  },
-  "author": "brandon",
-  "license": "MIT",
-  "devDependencies": {
-    "electron": "^28.2.2",
-    "module": "./projects.js"
-  },
-  "dependencies": {
-    "console": "^0.7.2",
-    "js2xmlparser": "^5.0.0",
-    "module": "./projects.js",
-    "node-file-dialog": "^1.0.3"
-  }
+	"name": "focus",
+	"version": "1.0.0",
+	"productName": "Focus",
+	"description": "cross-platform, speed-centered photo culling app.",
+	"main": "main.js",
+	"scripts": {
+		"start": "concurrently \"electron .\" \"react-scripts start\"",
+		"build": "react-scripts build",
+		"test": "react-scripts test",
+		"eject": "react-scripts eject"
+	},
+	"devDependencies": {
+		"@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+		"concurrently": "^8.2.2",
+		"electron": "^28.2.5",
+		"module": "./projects.js"
+	},
+	"dependencies": {
+		"@emotion/react": "^11.11.4",
+		"@emotion/styled": "^11.11.0",
+		"@mui/icons-material": "^5.15.12",
+		"@mui/material": "^5.15.11",
+		"console": "^0.7.2",
+		"extractd": "^2.1.2",
+		"js2xmlparser": "^5.0.0",
+		"module": "./projects.js",
+		"node-file-dialog": "^1.0.3",
+		"react": "^18.2.0",
+		"react-dom": "^18.2.0",
+		"react-refresh": "^0.14.0",
+		"react-router-dom": "^6.22.2",
+		"react-scripts": "5.0.1"
+	},
+	"eslintConfig": {
+		"extends": [
+			"react-app",
+			"react-app/jest"
+		]
+	},
+	"browserslist": {
+		"production": [
+			">0.2%",
+			"not dead",
+			"not op_mini all"
+		],
+		"development": [
+			"last 1 chrome version",
+			"last 1 firefox version",
+			"last 1 safari version"
+		]
+	},
+	"overrides": {
+		"react-refresh": "^0.14.0"
+	}
 }
