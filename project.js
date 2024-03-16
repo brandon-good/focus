@@ -16,6 +16,11 @@ const exiftoolExecutable = !isMac && !isLinux ? 'exiftool-windows.exe' : 'exifto
 const EXIFTOOL_PATH = path.join(__dirname, "exiftool", exiftoolExecutable);
 
 
+let UserProjects = {
+    projectList: [],
+    openProjects: []
+}
+
 class Project {
     constructor(name, srcDir, destDir, installDir) {
         this.name = name;
@@ -27,9 +32,22 @@ class Project {
     }
 }
 
-let UserProjects = {
-    projectList: [],
-    openProjects: []
+function getAllProjects() {
+    return UserProjects.projectList;
+}
+
+function getOpenProjects() {
+    return UserProjects.openProjects;
+}
+
+function openProject(project) {
+    if (!UserProjects.openProjects.includes(project)) {
+        UserProjects.openProjects.push(project);
+    }
+}
+
+function closeAllProjects() {
+    UserProjects.openProjects = [];
 }
 
 function newProject(name, srcDir, destDir, installDir) {
@@ -37,6 +55,7 @@ function newProject(name, srcDir, destDir, installDir) {
 
     createProjectDir(newProj);
     addProject(newProj);
+    saveUserData(installDir);
     return newProj;
 }
 
@@ -155,6 +174,7 @@ function saveProject(project) {
     console.log('filepath:' + project.filepath);
     console.log('name:' + project.name);
     let stored_project_file_path = path.join(project.filepath, project.name + ".json");
+    console.log("SAVE PROJECT STR: ", stored_project_file_path);
     console.log(JSON.stringify(project));
     fs.writeFile(stored_project_file_path, JSON.stringify(project), err => {
         if (err) console.log("ERROR SAVING USER PROJECT " + project.name);
@@ -189,18 +209,6 @@ function saveUserProjects(all_user_projects, install_dir) {
     });
 }
 
-function loadUserProjects(install_dir) {
-    // returns a user projects object
-    let all_user_projects;
-    let stored_projects_file_path = path.join(install_dir, JSON_PROJECTS_FILENAME);
-    fs.readFile(stored_projects_file_path, (err, content) => {
-        if (err) {
-            UserProjects = newUserProjects();
-        } else {
-            UserProjects = userProjectsFromJson(content);
-        }
-    })
-}
 
 function verifyNewProject(name, srcDir, destDir) {
     // return true is this is valid, false if not valid
@@ -220,19 +228,19 @@ function loadProjects(install_dir) {
         if (err) {
             fs.writeFile(
                 stored_projects_file_path,
-                JSON.stringify(UserProjects.projectList),
+                JSON.stringify(UserProjects),
                 (err) => {
                     if (err) console.log("ERROR SAVING USER PROJECT LIST");
                 }
             );
             return "new-project";
         } else {
-            UserProjects.projectList = userProjectsFromJson(content);
+            UserProjects = userProjectsFromJson(content);
             UserProjects.openProjects = UserProjects.projectList.filter((project) => project.open);
             return UserProjects.openProjects.length > 0 ? "projects" : "home";
         }
     });
-    return "new-project";
+    return "home";
 }
 
 function saveUserData(install_dir) {
@@ -241,6 +249,10 @@ function saveUserData(install_dir) {
 }
 
 module.exports = {
+    getAllProjects,
+    getOpenProjects,
+    openProject,
+    closeAllProjects,
     newProject,
     generate_jpg_previews,
     generateXMPs,
@@ -248,7 +260,6 @@ module.exports = {
     addProject,
     getProject,
     saveUserProjects,
-    loadUserProjects,
     verifyNewProject,
     getRating,
     getTags,

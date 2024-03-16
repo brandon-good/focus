@@ -90,13 +90,6 @@ function verifyInstallDirectory() {
 	if (!fs.existsSync(install_dir)) fs.mkdirSync(install_dir);
 }
 
-// TODO HEAD
-// function save_user_data() {
-// 	proj.saveUserProjects(proj.UserProjects, install_dir);
-// 	currently_open_projects.forEach(thisProj => proj.saveProject(thisProj));
-// }
-
-
 let rmdir = function (dir) {
 	const list = fs.readdirSync(dir);
 	for (let i = 0; i < list.length; i++) {
@@ -180,18 +173,16 @@ ipcMain.on("set-install-dir", (e, dir) => {
 // 	await mainWindow.loadFile('project.html');
 // });
 
-ipcMain.handle("get-project-names", () => proj.UserProjects.projectList.map((proj) => proj.name));
+ipcMain.handle("get-project-names", () => proj.getAllProjects().map((proj) => proj.name));
 
 ipcMain.handle("open-project", (e, name) => {
-	const project = proj.UserProjects.projectList.find((new_proj) => new_proj.name === name);
-	if (!proj.UserProjects.openProjects.includes(project)) {
-		proj.UserProjects.openProjects.push(project);
-	}
+	const project = proj.getAllProjects().find((new_proj) => new_proj.name === name);
+	proj.openProject(project);
 	switchToPage("projects");
 	return project;
 });
 
-ipcMain.handle("get-open-projects", () => proj.UserProjects.openProjects);
+ipcMain.handle("get-open-projects", () => proj.getOpenProjects());
 
 // TODO HEAD
 // ipcMain.on('start_create_project', async (event, args) => {
@@ -210,18 +201,18 @@ ipcMain.on("import_files", (e, { srcDir, destDir }) => {
 });
 
 ipcMain.on("return_index", async (event, args) => {
-	await mainWindow.loadFile("index.html"); // TODO was await
+	await mainWindow.loadFile("index.html");
 	// TODO close currently active project
 
 	// saves and removes all active projects
-	proj.UserProjects.openProjects.forEach((this_proj) => proj.saveProject(this_proj));
-	proj.UserProjects.openProjects = [];
+	proj.getOpenProjects().forEach((this_proj) => proj.saveProject(this_proj));
+	proj.closeAllProjects();
 });
 
 const verifyNewProject = (args) => ({
 	name:
 		args.name.length === 0 ||
-		proj.UserProjects.projectList.some((project) => project.name === args.name),
+		proj.getAllProjects().some((project) => project.name === args.name),
 	nameText:
 		args.name.length === 0
 			? "Name must be at least one character"
@@ -231,6 +222,7 @@ const verifyNewProject = (args) => ({
 });
 
 ipcMain.handle("create-project", (e, args) => {
+	console.log("HERE HERE:", proj.getAllProjects());
 	const errors = verifyNewProject(args);
 	if (
 		Object.values(errors).some((error) => typeof error === "boolean" && error)
@@ -240,7 +232,7 @@ ipcMain.handle("create-project", (e, args) => {
 	const new_proj = proj.newProject(args.name, args.srcDir, args.destDir, install_dir);
 	proj.createProjectDir(new_proj);
 	proj.addProject(new_proj);
-	proj.UserProjects.openProjects.push(new_proj);
+	proj.openProject(new_proj);
 
 	proj.generate_jpg_previews(
 		new_proj,
@@ -304,7 +296,8 @@ ipcMain.on('uninstall_app', async (event, args) => {
 
 app.on("window-all-closed", function () {
 	// if (!isMac)
-		app.quit();
+	app.quit();
+	proj.closeAllProjects();
 	proj.saveUserData(install_dir);
 });
 
