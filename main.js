@@ -176,7 +176,7 @@ ipcMain.on("set-install-dir", (e, dir) => {
 ipcMain.handle("get-project-names", () => proj.getAllProjects().map((proj) => proj.name));
 
 ipcMain.handle("open-project", (e, name) => {
-	const project = proj.getAllProjects().find((new_proj) => new_proj.name === name);
+	const project = proj.getProject(name);
 	proj.openProject(project);
 	switchToPage("projects");
 	return project;
@@ -230,8 +230,6 @@ ipcMain.handle("create-project", (e, args) => {
 		return errors;
 	}
 	const new_proj = proj.newProject(args.name, args.srcDir, args.destDir, install_dir);
-	proj.createProjectDir(new_proj);
-	proj.addProject(new_proj);
 	proj.openProject(new_proj);
 
 	proj.generate_jpg_previews(

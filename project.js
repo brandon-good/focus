@@ -55,7 +55,7 @@ function newProject(name, srcDir, destDir, installDir) {
 
     createProjectDir(newProj);
     addProject(newProj);
-    saveUserData(installDir);
+    saveUserData(installDir); // doesn't hurt but not sure it's necessary
     return newProj;
 }
 
@@ -193,12 +193,10 @@ function addProject(project) { // remove all_user_projects
     UserProjects.projectList.push(project);
 }
 
-function getProject(all_user_projects, project_name) {
-    let projectFound = null;
-    all_user_projects.projectList.forEach((proj) => {
-        if (proj.name === project_name) projectFound = proj;
-    });
-    return projectFound;
+function getProject(project_name) {
+    return UserProjects.projectList.find((this_proj) =>
+        this_proj.name === project_name
+    );
 }
 
 function saveUserProjects(all_user_projects, install_dir) {
