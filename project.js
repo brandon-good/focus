@@ -68,8 +68,12 @@ function projectFromJson(json) {
 }
 
 function archive(project) {
-	// delete all temp files in directory
+	// TODO delete all temp files in directory
 	project.archived = true;
+}
+
+function unArchive(project) {
+
 }
 
 function createProjectDir(project) {
@@ -80,11 +84,9 @@ function createProjectDir(project) {
 
 	saveProject(project);
 
-	// TODO save the jpg images
-
 }
 
-function generate_jpg_previews(project, thumb_loc, files) {
+function generateJPGPreviews(project, thumb_loc, files) {
 	// files is passed as an argument because we might load the files from elsewhere
 	// it is possible that we have to recreate the thumbnails based on the destination copied files
 	// DO NOT OVERWRITE EXISTING FILES
@@ -252,7 +254,7 @@ module.exports = {
 	openProject,
 	closeAllProjects,
 	newProject,
-	generate_jpg_previews,
+	generateJPGPreviews,
 	generateXMPs,
 	saveProject,
 	addProject,
