@@ -1,4 +1,3 @@
-const { exec } = require('child_process');
 
 const path = require('node:path')
 const fs = require('fs');
@@ -12,8 +11,6 @@ const SONY_RAW_EXTENSION = '.ARW';
 
 const isMac = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
-const exiftoolExecutable = !isMac && !isLinux ? 'exiftool-windows.exe' : 'exiftool';
-const EXIFTOOL_PATH = path.join(__dirname, "exiftool", exiftoolExecutable);
 
 
 let UserProjects = {
@@ -139,10 +136,7 @@ function generateJPGPreviews(project, thumb_loc, files) {
 	console.log("finished preview generation");
 }
 
-function generateXMPs(project, XMPInfo) {
-	// files is passed as an argument because we might load the files from elsewhere
-	// it is possible that we have to recreate the thumbnails based on the destination copied files
-	// DO NOT OVERWRITE EXISTING FILES
+function generateAllXMPs(project, XMPinfo) {
 	let files = fs.readdirSync(project.srcDir).filter(file => {
 		return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION;
 	});
@@ -158,51 +152,46 @@ function generateXMPs(project, XMPInfo) {
 			return;
 		}
 
-		// build exiftool command
-		let command = `${EXIFTOOL_PATH} -o "${xmpFilePath}"`;
-		for (const [key, value] of Object.entries(XMPInfo)) {
-			const escapedValue = value.toString().replace(/"/g, '\\"');
-			command += ` -XMP:${key}="${escapedValue}"`;
-		}
-
-		// execute command
-		const result = execute(command);
-		if (result === false) {
-			console.log("Error creating/updating XMP file");
-		} else {
-			console.log(`XMP file created/updated successfully: ${xmpFileName}`);
-		}
+		generateXMP(xmpFilePath, XMPinfo);
 	});
 }
 
-function execute(command) {
-	return exec(command, (error, stdout, stderr) => {
-		if (error) {
-			console.error(`Error executing command: ${error.message}`);
-			return false;
-		}
-		if (stderr) {
-			console.error(`stderr: ${stderr}`);
-			return false;
-		}
-		return stdout;
+function generateXMP(xmpFilePath, XMPinfo) {
+	const header = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+		'<x:xmpmeta xmlns:x="http://ns.focus.com/meta">\n' +
+		'\t<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n' +
+		'\t\t<rdf:Description rdf:about=""\n' +
+		'\t\t\t\txmlns:xmp="http://ns.focus.com/xap/1.0/">\n';
+
+	let rating = '';
+	if (XMPinfo["rating"] !== 0) {
+		rating = `\t\t\t<xmp:Rating>${XMPinfo["rating"]}</xmp:Rating>\n`;
+	}
+
+	let tags = ''
+	if (XMPinfo['tags'].length !== 0) {
+		console.log(XMPinfo['tags']);
+		tags = `\t\t\t<xmp:Label>${XMPinfo['tags'].join(", ")}</xmp:Label>\n`
+	}
+
+	// add any other tags here if necessary
+
+	const footer = '\t\t</rdf:Description>\n' +
+		'\t</rdf:RDF>\n' +
+		'</x:xmpmeta>\n';
+
+	const fileContents = header + rating + tags + footer;
+	fs.writeFile(xmpFilePath, fileContents, err => {
+		if (err) console.log("ERROR SAVING XMP");
 	});
 }
 
-async function getRating(file) {
-	const result = execute(`${EXIFTOOL_PATH} -XMP:Rating "${file}" | awk -F': ' '{print $2}'`);
-	if (result === false) {
-		console.log(`Error reading rating from ${file}`);
-	}
-	return result;
+async function getRating() {
+	// TODO
 }
 
-async function getTags(file) {
-	const result = execute(`${EXIFTOOL_PATH} -XMP:Subject "${file}" | awk -F': ' '{print $2}'`);
-	if (result === false) {
-		console.log(`Error reading rating from ${file}`);
-	}
-	return result;
+async function getTags() {
+	// TODO
 }
 
 function saveProject(project) {
@@ -293,7 +282,8 @@ module.exports = {
 	closeAllProjects,
 	newProject,
 	generateJPGPreviews,
-	generateXMPs,
+	generateAllXMPs,
+	generateXMP,
 	saveProject,
 	addProject,
 	getProject,
