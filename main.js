@@ -227,11 +227,11 @@ ipcMain.handle("create-project", (e, args) => {
 		});
 
 	let defaultInfoXMP = {
-		"Rating": 3,
-		"Subject": ["temp", "test"] // alternative name for tags, needs to be under a built-in XMP tag
+		"rating": 0,
+		"tags": [] // alternative name for tags, needs to be under a built-in XMP tag
 	};
 
-	proj.generateXMPs(newProj, defaultInfoXMP);
+	proj.generateAllXMPs(newProj, defaultInfoXMP);
 	return errors;
 });
 
