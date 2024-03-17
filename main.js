@@ -13,9 +13,7 @@ const util = require("util");
 const isMac = process.platform === "darwin";
 const isLinux = process.platform === "linux"; // do we need this?
 const isDev = process.env.NODE_ENV === "development";
-const PREVIEW_FOLDER_NAME = "previews";
 const SONY_RAW_EXTENSION = ".ARW";
-
 
 const userdata_dir = app.getPath("userData");
 const install_dir_filename = "install_directory.txt";
@@ -131,47 +129,17 @@ ipcMain.handle("open-dialog", async (e, args) => {
 
 ipcMain.on("set-install-dir", (e, dir) => {
 	console.log('installation dir: ' + dir)
-	// TODO all of the rest of this file is new
 	// save to file
 	const install_dir_file = path.join(userdata_dir, install_dir_filename);
 	fs.writeFile(install_dir_file, dir, (err) => {
 		if (err) console.log("ERROR INITIALIZING INSTALL DIRECTORY");
 	});
 
+	install_dir = dir;
 	verifyInstallDirectory();
-	proj.loadProjects(dir);
+	const projectPage = proj.loadProjects(install_dir);
+	switchToPage(projectPage);
 });
-
-// TODO sean removed these
-// ipcMain.handle('get_default_install_location', async (event, args) => {
-// 	return installDir;
-// });
-//
-// ipcMain.handle('add_focus_to_filepath', async (event, args) => {
-// 	return path.join(args, 'Focus');
-// });
-//
-// ipcMain.handle('dialog', async (event, method, params) => {
-// 	return await dialog[method](params);
-// });
-//
-// ipcMain.handle('get_project_names', async (event, args) => {
-// 	return proj.UserProjects.projectList.map( (project) => project.name);
-// });
-//
-// ipcMain.on('project_selected', async (event, args) => {
-// 	let project = proj.getProject(proj.UserProjects, args.name);
-// 	if (project === null) {
-// 		console.log("PROJECT DOES NOT EXIST");
-// 		return null;
-// 	}
-//
-// 	// inform main.js that this project is actively being used
-// 	currently_open_projects.push(project);
-//
-// 	// set current scene to that for the project
-// 	await mainWindow.loadFile('project.html');
-// });
 
 ipcMain.handle("get-project-names", () => proj.getAllProjects().map((proj) => proj.name));
 
@@ -182,18 +150,19 @@ ipcMain.handle("open-project", (e, name) => {
 	return project;
 });
 
+ipcMain.handle("archive-project", (e, name) => {
+	proj.archiveProject(proj.getProject(name));
+});
+
+ipcMain.handle("unarchive-project", (e, name) => {
+	proj.unArchiveProject(proj.getProject(name));
+});
+
+ipcMain.handle("delete-project", (e, name) => {
+	proj.deleteProject(proj.getProject(name));
+});
+
 ipcMain.handle("get-open-projects", () => proj.getOpenProjects());
-
-// TODO HEAD
-// ipcMain.on('start_create_project', async (event, args) => {
-//   await mainWindow.loadFile('new_project.html');
-// });
-//
-// ipcMain.on('cancel_new_project', async (event, args) => {
-// 	await mainWindow.loadFile('index.html'); // return to main display
-// })
-
-// TODO HEAD END SEAN START
 
 ipcMain.on("import_files", (e, { srcDir, destDir }) => {
 	console.log("src dir: " + srcDir);
@@ -229,14 +198,15 @@ ipcMain.handle("create-project", (e, args) => {
 	) {
 		return errors;
 	}
-	const new_proj = proj.newProject(args.name, args.srcDir, args.destDir, install_dir);
-	proj.openProject(new_proj);
+	const newProj = proj.newProject(args.name, args.srcDir, args.destDir, install_dir);
+	proj.openProject(newProj);
 
-	proj.generate_jpg_previews(
-		new_proj,
-		path.join(new_proj.filepath, PREVIEW_FOLDER_NAME),
+	// TO	DO generate from source if one is given, otherwise generate from destination (do not copy files)
+	proj.generateJPGPreviews(
+		newProj,
+		path.join(newProj.filepath, proj.PREVIEW_FOLDER_NAME),
 		fs
-			.readdirSync(new_proj.srcDir)
+			.readdirSync(newProj.srcDir)
 			.filter((file) => path.extname(file).toUpperCase() === SONY_RAW_EXTENSION)
 			.map((file) => path.join(args.srcDir, file))
 	);
@@ -244,6 +214,7 @@ ipcMain.handle("create-project", (e, args) => {
 	switchToPage("projects");
 
 	// this should occur in the background hopefully
+	// TODO do not copy files if we are creating a project from existing destination
 	copyFiles(args.srcDir, args.destDir,
 		fs.readdirSync(args.srcDir).filter((file) =>
 			path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
@@ -260,18 +231,17 @@ ipcMain.handle("create-project", (e, args) => {
 		"Subject": ["temp", "test"] // alternative name for tags, needs to be under a built-in XMP tag
 	};
 
-	proj.generateXMPs(new_proj, defaultInfoXMP);
+	proj.generateXMPs(newProj, defaultInfoXMP);
 	return errors;
 });
 
-ipcMain.handle("get-preview-paths", (e, proj) =>
+ipcMain.handle("get-preview-paths", (e, project) =>
 	fs
-		.readdirSync(path.join(proj.filepath, PREVIEW_FOLDER_NAME))
+		.readdirSync(path.join(project.filepath, proj.PREVIEW_FOLDER_NAME))
 		.map((previewPath) =>
-			path.join(proj.filepath, PREVIEW_FOLDER_NAME, previewPath)
+			path.join(project.filepath, proj.PREVIEW_FOLDER_NAME, previewPath)
 		)
 );
-// TODO SEAN END
 
 ipcMain.on('uninstall_app', async (event, args) => {
 	await uninstall_app();
@@ -287,7 +257,6 @@ ipcMain.on('uninstall_app', async (event, args) => {
 	app.quit();
 });
 
-// TODO sean deleted
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
