@@ -1,4 +1,3 @@
-
 const { exec } = require('child_process');
 
 const path = require('node:path')
@@ -7,6 +6,7 @@ const console = require("console");
 const extractd = require("extractd");
 
 const JSON_PROJECTS_FILENAME = "projects.json";
+// TODO this is repeated in main.js, should we export it from here and import in main.js?
 const PREVIEW_FOLDER_NAME = 'previews';
 const SONY_RAW_EXTENSION = '.ARW';
 
@@ -67,13 +67,47 @@ function projectFromJson(json) {
 	return newProj;
 }
 
-function archive(project) {
-	// TODO delete all temp files in directory
+// TODO this is copied from main.js, should we export it here and import in main.js?
+let rmdir = function (dir) {
+	const list = fs.readdirSync(dir);
+	for (let i = 0; i < list.length; i++) {
+		const filename = path.join(dir, list[i]);
+		const stat = fs.statSync(filename);
+		if (filename === "." || filename === "..") {
+			// pass these files
+		} else if (stat.isDirectory()) {
+			// rmdir recursively
+			rmdir(filename);
+		} else {
+			// rm filename
+			fs.unlinkSync(filename);
+		}
+	}
+	fs.rmdirSync(dir);
+};
+
+function archiveProject(project) {
+	const previewsFile = path.join(project.filepath, PREVIEW_FOLDER_NAME);
+	rmdir(previewsFile);
+	UserProjects.openProjects.remove(project);
 	project.archived = true;
 }
 
-function unArchive(project) {
+function unArchiveProject(project) {
+	generateJPGPreviews(project, path.join(project.filepath, PREVIEW_FOLDER_NAME), 
+		fs
+			.readdirSync(newProj.destDir)
+			.filter((file) => path.extname(file).toUpperCase() === SONY_RAW_EXTENSION)
+			.map((file) => path.join(args.destDir, file))
+	);
+	project.archived = false;
+}
 
+function deleteProject(project) {
+	// this assumes the user has already confirmed that they want to delete the project
+	rmdir(project.filepath);	
+	UserProjects.projectList.remove(project);
+	UserProjects.openProjects.remove(project);
 }
 
 function createProjectDir(project) {
@@ -249,6 +283,10 @@ function saveUserData(install_dir) {
 }
 
 module.exports = {
+	// these are constants
+	PREVIEW_FOLDER_NAME,
+
+	// these are methods
 	getAllProjects,
 	getOpenProjects,
 	openProject,
@@ -264,7 +302,9 @@ module.exports = {
 	getTags,
 	loadProjects,
 	saveUserData,
-	archive,
+	archiveProject,
+	unArchiveProject,
+	deleteProject,
 
 	// the below are unused in main as of right now, might be able to delete?
 	// UserProjects,

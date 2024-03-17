@@ -13,9 +13,7 @@ const util = require("util");
 const isMac = process.platform === "darwin";
 const isLinux = process.platform === "linux"; // do we need this?
 const isDev = process.env.NODE_ENV === "development";
-const PREVIEW_FOLDER_NAME = "previews";
 const SONY_RAW_EXTENSION = ".ARW";
-
 
 const userdata_dir = app.getPath("userData");
 const install_dir_filename = "install_directory.txt";
@@ -152,6 +150,18 @@ ipcMain.handle("open-project", (e, name) => {
 	return project;
 });
 
+ipcMain.handle("archive-project", (e, name) => {
+	proj.archiveProject(proj.getProject(name));
+});
+
+ipcMain.handle("unarchive-project", (e, name) => {
+	proj.unArchiveProject(proj.getProject(name));
+});
+
+ipcMain.handle("delete-project", (e, name) => {
+	proj.deleteProject(proj.getProject(name));
+});
+
 ipcMain.handle("get-open-projects", () => proj.getOpenProjects());
 
 ipcMain.on("import_files", (e, { srcDir, destDir }) => {
@@ -191,10 +201,10 @@ ipcMain.handle("create-project", (e, args) => {
 	const newProj = proj.newProject(args.name, args.srcDir, args.destDir, install_dir);
 	proj.openProject(newProj);
 
-	// TODO generate from source if one is given, otherwise generate from destination (do not copy files)
+	// TO	DO generate from source if one is given, otherwise generate from destination (do not copy files)
 	proj.generateJPGPreviews(
 		newProj,
-		path.join(newProj.filepath, PREVIEW_FOLDER_NAME),
+		path.join(newProj.filepath, proj.PREVIEW_FOLDER_NAME),
 		fs
 			.readdirSync(newProj.srcDir)
 			.filter((file) => path.extname(file).toUpperCase() === SONY_RAW_EXTENSION)
@@ -225,11 +235,11 @@ ipcMain.handle("create-project", (e, args) => {
 	return errors;
 });
 
-ipcMain.handle("get-preview-paths", (e, proj) =>
+ipcMain.handle("get-preview-paths", (e, project) =>
 	fs
-		.readdirSync(path.join(proj.filepath, PREVIEW_FOLDER_NAME))
+		.readdirSync(path.join(project.filepath, proj.PREVIEW_FOLDER_NAME))
 		.map((previewPath) =>
-			path.join(proj.filepath, PREVIEW_FOLDER_NAME, previewPath)
+			path.join(project.filepath, proj.PREVIEW_FOLDER_NAME, previewPath)
 		)
 );
 
