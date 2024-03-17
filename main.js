@@ -11,8 +11,8 @@ const path = require("node:path");
 const util = require("util");
 
 const isMac = process.platform === "darwin";
-const isLinux = process.platform === "linux"; // do we need this?
-const isDev = process.env.NODE_ENV === "development";
+const isLinux = process.platform === "linux";
+const isDev = process.env.NODE_ENV !== "development";
 const SONY_RAW_EXTENSION = ".ARW";
 
 const userdata_dir = app.getPath("userData");
@@ -228,7 +228,7 @@ ipcMain.handle("create-project", (e, args) => {
 
 	let defaultInfoXMP = {
 		"rating": 0,
-		"tags": [] // alternative name for tags, needs to be under a built-in XMP tag
+		"tags": []
 	};
 
 	proj.generateAllXMPs(newProj, defaultInfoXMP);

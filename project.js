@@ -40,10 +40,14 @@ function getOpenProjects() {
 function openProject(project) {
 	if (!UserProjects.openProjects.includes(project)) {
 		UserProjects.openProjects.push(project);
+		project.open = true;
 	}
 }
 
 function closeAllProjects() {
+	UserProjects.openProjects.forEach(project => {
+		project.open = false;
+	})
 	UserProjects.openProjects = [];
 }
 
@@ -87,13 +91,14 @@ function archiveProject(project) {
 	const previewsFile = path.join(project.filepath, PREVIEW_FOLDER_NAME);
 	rmdir(previewsFile);
 	UserProjects.openProjects.remove(project);
+	project.open = false;
 	project.archived = true;
 }
 
 function unArchiveProject(project) {
 	generateJPGPreviews(project, path.join(project.filepath, PREVIEW_FOLDER_NAME), 
 		fs
-			.readdirSync(newProj.destDir)
+			.readdirSync(newProj.destDir) // TODO newProj and args are undefined (bennett!)
 			.filter((file) => path.extname(file).toUpperCase() === SONY_RAW_EXTENSION)
 			.map((file) => path.join(args.destDir, file))
 	);
