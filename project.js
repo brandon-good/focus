@@ -163,6 +163,8 @@ function generateAllXMPs(project, XMPinfo) {
 	});
 }
 
+// thinking this through, we'll only ever use this function for generating new XMPs,
+// so do we need the XMPinfo param? Or can I just hardcode in no rating and no tags?
 function generateXMP(project, file, XMPinfo) {
 	const header = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
 		'<x:xmpmeta xmlns:x="http://ns.focus.com/meta">\n' +
@@ -217,17 +219,19 @@ function writeXMP(project, file, fileContents) {
 function setRating(project, file, rating) {
 	let xmp = readXMP(project, file);
 
-	const startIndex = xmp.indexOf("<xmp:Rating>")
-	const endIndex = xmp.indexOf("</xmp:Rating>")
-	console.log("\nXMP: ", xmp)
+	const startIndex = xmp.indexOf("<xmp:Rating>");
+	const endIndex = xmp.indexOf("</xmp:Rating>");
 
-	// if a rating is already in place
-	if (startIndex !== -1) {
+	if (startIndex !== -1 && rating !== 0) {  // if the line exists and we want to update it
 		xmp = xmp.substring(0, startIndex + "<xmp:Rating>".length)
 			+ rating.toString()
 			+ xmp.substring(endIndex, xmp.length);
-		console.log("Rating changed: ", rating.toString());
-	} else { // if we need to add the line
+
+	} else if (startIndex !== -1 && rating === 0) {  // if the line exists and we want to remove it
+		xmp = xmp.substring(0, startIndex - "\n".length)
+			+ xmp.substring(endIndex + "</xmp:Rating>".length, xmp.length);
+
+	} else if (startIndex === -1 && rating !== 0) {  // if we want to add the line and the line doesn't exist
 		const searchStr = 'xmlns:xmp="http://ns.focus.com/xap/1.0/">\n';
 		const insertIndex = xmp.indexOf(searchStr);
 		const beforeInsert = xmp.substring(0, insertIndex + searchStr.length);
@@ -236,7 +240,9 @@ function setRating(project, file, rating) {
 
 		console.log("XMP before: ", xmp, "\nBefore: ", beforeInsert, "\nAfter: ", afterInsert)
 		xmp = beforeInsert + newRating + afterInsert;
-	}
+
+	}  // else (startIndex === -1 && rating === 0), if the line doesn't exist and we don't want to add it, do nothing
+
 	writeXMP(project, file, xmp);
 }
 
