@@ -11,8 +11,8 @@ const path = require("node:path");
 const util = require("util");
 
 const isMac = process.platform === "darwin";
-const isLinux = process.platform === "linux"; // do we need this?
-const isDev = process.env.NODE_ENV === "development";
+const isLinux = process.platform === "linux";
+const isDev = process.env.NODE_ENV !== "development";
 const SONY_RAW_EXTENSION = ".ARW";
 
 const userdata_dir = app.getPath("userData");
@@ -61,6 +61,7 @@ app.whenReady().then(() => {
 	});
 });
 
+// TODO should this be a function in the project file?
 const copyFilePromise = util.promisify(fs.copyFile);
 function copyFiles(srcDir, destDir, files) {
 	console.log("files to copy " + files);
@@ -150,6 +151,11 @@ ipcMain.handle("open-project", (e, name) => {
 	return project;
 });
 
+// project is the proj object, file is the basename of the image, rating is an integer 0-5
+ipcMain.handle("set-rating", (e, project, file, rating) => {
+	proj.setRating(project, file, rating);
+});
+
 ipcMain.handle("archive-project", (e, name) => {
 	proj.archiveProject(proj.getProject(name));
 });
@@ -201,7 +207,7 @@ ipcMain.handle("create-project", (e, args) => {
 	const newProj = proj.newProject(args.name, args.srcDir, args.destDir, install_dir);
 	proj.openProject(newProj);
 
-	// TO	DO generate from source if one is given, otherwise generate from destination (do not copy files)
+	// TODO generate from source if one is given, otherwise generate from destination (do not copy files)
 	proj.generateJPGPreviews(
 		newProj,
 		path.join(newProj.filepath, proj.PREVIEW_FOLDER_NAME),
@@ -210,6 +216,11 @@ ipcMain.handle("create-project", (e, args) => {
 			.filter((file) => path.extname(file).toUpperCase() === SONY_RAW_EXTENSION)
 			.map((file) => path.join(args.srcDir, file))
 	);
+
+	// add photo names to the project
+	fs.readdirSync(newProj.srcDir)
+		.filter((file) => path.extname(file).toUpperCase() === SONY_RAW_EXTENSION)
+		.forEach((file) => proj.addPhoto(newProj, file))
 
 	switchToPage("projects");
 
@@ -228,7 +239,7 @@ ipcMain.handle("create-project", (e, args) => {
 
 	let defaultInfoXMP = {
 		"rating": 0,
-		"tags": [] // alternative name for tags, needs to be under a built-in XMP tag
+		"tags": []
 	};
 
 	proj.generateAllXMPs(newProj, defaultInfoXMP);

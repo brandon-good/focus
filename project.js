@@ -26,7 +26,12 @@ class Project {
 		this.filepath = path.join(installDir, name);
 		this.archived = false;
 		this.open = true;
+		this.photoNames = [] // list of filenames of the photos
 	}
+}
+
+function addPhoto(project, file) {
+	project.photoNames.push(file);
 }
 
 function getAllProjects() {
@@ -40,10 +45,14 @@ function getOpenProjects() {
 function openProject(project) {
 	if (!UserProjects.openProjects.includes(project)) {
 		UserProjects.openProjects.push(project);
+		project.open = true;
 	}
 }
 
 function closeAllProjects() {
+	UserProjects.openProjects.forEach(project => {
+		project.open = false;
+	})
 	UserProjects.openProjects = [];
 }
 
@@ -65,6 +74,7 @@ function projectFromJson(json) {
 }
 
 // TODO this is copied from main.js, should we export it here and import in main.js?
+// i feel like it's not project specific so it doesn't feel right to go here, but maybe we make a new file for utils? -katie
 let rmdir = function (dir) {
 	const list = fs.readdirSync(dir);
 	for (let i = 0; i < list.length; i++) {
@@ -87,13 +97,14 @@ function archiveProject(project) {
 	const previewsFile = path.join(project.filepath, PREVIEW_FOLDER_NAME);
 	rmdir(previewsFile);
 	UserProjects.openProjects.remove(project);
+	project.open = false;
 	project.archived = true;
 }
 
 function unArchiveProject(project) {
 	generateJPGPreviews(project, path.join(project.filepath, PREVIEW_FOLDER_NAME), 
 		fs
-			.readdirSync(newProj.destDir)
+			.readdirSync(newProj.destDir) // TODO newProj and args are undefined (bennett!)
 			.filter((file) => path.extname(file).toUpperCase() === SONY_RAW_EXTENSION)
 			.map((file) => path.join(args.destDir, file))
 	);
@@ -137,11 +148,7 @@ function generateJPGPreviews(project, thumb_loc, files) {
 }
 
 function generateAllXMPs(project, XMPinfo) {
-	let files = fs.readdirSync(project.srcDir).filter(file => {
-		return path.extname(file).toUpperCase() === SONY_RAW_EXTENSION;
-	});
-
-	files.forEach(file => {
+	project.photoNames.forEach(file => {
 		const baseName = path.basename(file, path.extname(file));
 		const xmpFileName = baseName + '.XMP';
 		const xmpFilePath = path.join(project.destDir, xmpFileName);
@@ -152,11 +159,11 @@ function generateAllXMPs(project, XMPinfo) {
 			return;
 		}
 
-		generateXMP(xmpFilePath, XMPinfo);
+		generateXMP(project, file, XMPinfo);
 	});
 }
 
-function generateXMP(xmpFilePath, XMPinfo) {
+function generateXMP(project, file, XMPinfo) {
 	const header = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
 		'<x:xmpmeta xmlns:x="http://ns.focus.com/meta">\n' +
 		'\t<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n' +
@@ -181,9 +188,60 @@ function generateXMP(xmpFilePath, XMPinfo) {
 		'</x:xmpmeta>\n';
 
 	const fileContents = header + rating + tags + footer;
+	writeXMP(project, file, fileContents);
+}
+
+// assuming that the filename given is only the basename
+function readXMP(project, file) {
+	const baseName = path.basename(file, path.extname(file));
+	const xmpFileName = baseName + '.XMP';
+	const xmpFilePath = path.join(project.destDir, xmpFileName);
+	try {
+		return fs.readFileSync(xmpFilePath, 'utf8');
+	} catch (err) {
+		console.error("ERROR READING XMP");
+		return "";
+	}
+}
+
+function writeXMP(project, file, fileContents) {
+	const baseName = path.basename(file, path.extname(file));
+	const xmpFileName = baseName + '.XMP';
+	const xmpFilePath = path.join(project.destDir, xmpFileName);
+
 	fs.writeFile(xmpFilePath, fileContents, err => {
 		if (err) console.log("ERROR SAVING XMP");
 	});
+}
+
+function setRating(project, file, rating) {
+	let xmp = readXMP(project, file);
+
+	const startIndex = xmp.indexOf("<xmp:Rating>")
+	const endIndex = xmp.indexOf("</xmp:Rating>")
+	console.log("\nXMP: ", xmp)
+
+	// if a rating is already in place
+	if (startIndex !== -1) {
+		xmp = xmp.substring(0, startIndex + "<xmp:Rating>".length)
+			+ rating.toString()
+			+ xmp.substring(endIndex, xmp.length);
+		console.log("Rating changed: ", rating.toString());
+	} else { // if we need to add the line
+		const searchStr = 'xmlns:xmp="http://ns.focus.com/xap/1.0/">\n';
+		const insertIndex = xmp.indexOf(searchStr);
+		const beforeInsert = xmp.substring(0, insertIndex + searchStr.length);
+		const afterInsert = xmp.substring(insertIndex + searchStr.length, xmp.length);
+		const newRating = `\t\t\t<xmp:Rating>${rating}</xmp:Rating>\n`;
+
+		console.log("XMP before: ", xmp, "\nBefore: ", beforeInsert, "\nAfter: ", afterInsert)
+		xmp = beforeInsert + newRating + afterInsert;
+	}
+	writeXMP(project, file, xmp);
+}
+
+function addTag(project, file, rating) {
+	// TODO
 }
 
 async function getRating() {
@@ -276,6 +334,7 @@ module.exports = {
 	PREVIEW_FOLDER_NAME,
 
 	// these are methods
+	addPhoto,
 	getAllProjects,
 	getOpenProjects,
 	openProject,
@@ -289,6 +348,7 @@ module.exports = {
 	getProject,
 	verifyNewProject,
 	getRating,
+	setRating,
 	getTags,
 	loadProjects,
 	saveUserData,
