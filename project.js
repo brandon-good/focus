@@ -147,7 +147,12 @@ function generateJPGPreviews(project, thumb_loc, files) {
 	console.log("finished preview generation");
 }
 
-function generateAllXMPs(project, XMPinfo) {
+function generateAllXMPs(project) {
+	const XMPinfo = {
+		"rating": 0,
+		"tags": []
+	};
+
 	project.photoNames.forEach(file => {
 		const baseName = path.basename(file, path.extname(file));
 		const xmpFileName = baseName + '.XMP';
@@ -246,16 +251,23 @@ function setRating(project, file, rating) {
 	writeXMP(project, file, xmp);
 }
 
-function addTag(project, file, rating) {
-	// TODO
+function addTag(project, file, tag) {
+	// TODO get the tag, add to list, write list of tags to XMP. similar structure to setRating
 }
 
-async function getRating() {
-	// TODO
+function removeTag(project, file, tag) {
+	// TODO same as addTag but remove from list of tags instead
 }
 
-async function getTags() {
-	// TODO
+function getXMPInfo() {
+	// TODO this should be a dictionary with {"rating": 0, "tags": []}
+}
+
+ function getRating() {
+	// TODO return as an int
+}
+ function getTags() {
+	// TODO return as a list
 }
 
 function saveProject(project) {

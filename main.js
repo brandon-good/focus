@@ -237,12 +237,7 @@ ipcMain.handle("create-project", (e, args) => {
 			console.log(err);
 		});
 
-	let defaultInfoXMP = {
-		"rating": 0,
-		"tags": []
-	};
-
-	proj.generateAllXMPs(newProj, defaultInfoXMP);
+	proj.generateAllXMPs(newProj);
 	return errors;
 });
 
