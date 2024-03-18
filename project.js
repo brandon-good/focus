@@ -209,7 +209,7 @@ function writeXMP(project, file, fileContents) {
 	const xmpFileName = baseName + '.XMP';
 	const xmpFilePath = path.join(project.destDir, xmpFileName);
 
-	fs.writeFileSync(xmpFilePath, fileContents, err => { // remove sync
+	fs.writeFile(xmpFilePath, fileContents, err => {
 		if (err) console.log("ERROR SAVING XMP");
 	});
 }
