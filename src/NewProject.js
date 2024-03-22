@@ -19,7 +19,7 @@ export default function CreateProject() {
 			<HomeIcon
 				fontSize="small"
 				onClick={() => (window.location.href = "http://localhost:3000/home")}
-				sx={{ cursor: "pointer" }}
+				sx={{ color: "white", cursor: "pointer" }}
 			/>
 			<h1>New project</h1>
 			<TextField

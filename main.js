@@ -1,10 +1,15 @@
-
 // In-project imports
-const proj = require('./project');
-
+const proj = require("./project");
 
 // Modules to control application life and create native browser window
-const { app, BrowserWindow, dialog, ipcMain } = require("electron");
+const {
+	app,
+	BrowserWindow,
+	dialog,
+	ipcMain,
+	net,
+	protocol,
+} = require("electron");
 const fs = require("fs");
 const console = require("console");
 const path = require("node:path");
@@ -12,6 +17,7 @@ const util = require("util");
 
 const isMac = process.platform === "darwin";
 const isLinux = process.platform === "linux";
+const isWindows = process.platform === "win32";
 const isDev = process.env.NODE_ENV !== "development";
 const SONY_RAW_EXTENSION = ".ARW";
 
@@ -26,7 +32,14 @@ function switchToPage(page) {
 }
 
 function createWindow() {
-	app.commandLine.appendSwitch("disable-web-security");
+	protocol.handle("preview", (request) => {
+		let url = request.url.slice("preview://".length).replace(/ /g, "%20");
+		if (isWindows) {
+			url = `${url.slice(0, 1)}:${url.slice(1)}`.replace(/\\/g, "/");
+		}
+		console.log("file://" + url);
+		return net.fetch("file://" + url);
+	});
 
 	// timeout allows time for React to start
 	setTimeout(() => {
@@ -37,7 +50,6 @@ function createWindow() {
 			webPreferences: {
 				preload: path.join(__dirname, "preload.js"),
 				contextIsolation: true,
-				webSecurity: false, // temporary hack to load previews
 			},
 		});
 		mainWindow.setMenuBarVisibility(false);
@@ -127,9 +139,8 @@ ipcMain.handle("open-dialog", async (e, args) => {
 		: null;
 });
 
-
 ipcMain.on("set-install-dir", (e, dir) => {
-	console.log('installation dir: ' + dir)
+	console.log("installation dir: " + dir);
 	// save to file
 	const install_dir_file = path.join(userdata_dir, install_dir_filename);
 	fs.writeFile(install_dir_file, dir, (err) => {
@@ -142,13 +153,25 @@ ipcMain.on("set-install-dir", (e, dir) => {
 	switchToPage(projectPage);
 });
 
-ipcMain.handle("get-project-names", () => proj.getAllProjects().map((proj) => proj.name));
+ipcMain.handle("get-project-names", () =>
+	proj.getAllProjects().map((proj) => proj.name)
+);
 
 ipcMain.handle("open-project", (e, name) => {
-	const project = proj.getProject(name);
-	proj.openProject(project);
 	switchToPage("projects");
-	return project;
+	return proj.openProject(name);
+});
+
+ipcMain.handle("close-selected-project", () => {
+	const projects = proj.closeSelectedProject();
+	const openProjects = proj.getOpenProjects();
+	if (openProjects.length > 0) {
+		openProjects[openProjects.length - 1].open = true;
+		openProjects[openProjects.length - 1].selected = true;
+	} else {
+		switchToPage("home");
+	}
+	return projects;
 });
 
 // project is the proj object, file is the basename of the image, rating is an integer 0-5
@@ -169,11 +192,6 @@ ipcMain.handle("delete-project", (e, name) => {
 });
 
 ipcMain.handle("get-open-projects", () => proj.getOpenProjects());
-
-ipcMain.on("import_files", (e, { srcDir, destDir }) => {
-	console.log("src dir: " + srcDir);
-	console.log("dest dir: " + destDir);
-});
 
 ipcMain.on("return_index", async (event, args) => {
 	await mainWindow.loadFile("index.html");
@@ -204,12 +222,16 @@ ipcMain.handle("create-project", (e, args) => {
 	) {
 		return errors;
 	}
-	const newProj = proj.newProject(args.name, args.srcDir, args.destDir, install_dir);
-	proj.openProject(newProj);
+	const newProj = proj.newProject(
+		args.name,
+		args.srcDir,
+		args.destDir,
+		install_dir
+	);
+	proj.openProject(newProj.name);
 
 	// TODO generate from source if one is given, otherwise generate from destination (do not copy files)
 	proj.generateJPGPreviews(
-		newProj,
 		path.join(newProj.filepath, proj.PREVIEW_FOLDER_NAME),
 		fs
 			.readdirSync(newProj.srcDir)
@@ -220,16 +242,19 @@ ipcMain.handle("create-project", (e, args) => {
 	// add photo names to the project
 	fs.readdirSync(newProj.srcDir)
 		.filter((file) => path.extname(file).toUpperCase() === SONY_RAW_EXTENSION)
-		.forEach((file) => proj.addPhoto(newProj, file))
+		.forEach((file) => proj.addPhoto(newProj, file));
 
 	switchToPage("projects");
 
 	// this should occur in the background hopefully
 	// TODO do not copy files if we are creating a project from existing destination
-	copyFiles(args.srcDir, args.destDir,
-		fs.readdirSync(args.srcDir).filter((file) =>
-			path.extname(file).toUpperCase() === SONY_RAW_EXTENSION
-		))
+	copyFiles(
+		args.srcDir,
+		args.destDir,
+		fs
+			.readdirSync(args.srcDir)
+			.filter((file) => path.extname(file).toUpperCase() === SONY_RAW_EXTENSION)
+	)
 		.then(() => {
 			console.log("done");
 		})
@@ -241,21 +266,17 @@ ipcMain.handle("create-project", (e, args) => {
 	return errors;
 });
 
-ipcMain.handle("get-preview-paths", (e, project) =>
-	fs
-		.readdirSync(path.join(project.filepath, proj.PREVIEW_FOLDER_NAME))
-		.map((previewPath) =>
-			path.join(project.filepath, proj.PREVIEW_FOLDER_NAME, previewPath)
-		)
-);
+ipcMain.handle("get-projects", (e) => proj.getAllProjects());
 
-ipcMain.on('uninstall_app', async (event, args) => {
+ipcMain.handle("select-project", (e, name) => proj.selectProject(name));
+
+ipcMain.on("uninstall_app", async (event, args) => {
 	await uninstall_app();
 	// Retrieve all open windows
 	const allWindows = BrowserWindow.getAllWindows();
 
 	// Loop through all windows and close them
-	allWindows.forEach(window => {
+	allWindows.forEach((window) => {
 		window.close();
 	});
 
@@ -273,4 +294,3 @@ app.on("window-all-closed", function () {
 	proj.closeAllProjects();
 	proj.saveUserData(install_dir);
 });
-
