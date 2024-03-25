@@ -1,6 +1,8 @@
 // In-project imports
 const { Photo } = require("./photo");
 const proj = require("./project");
+const utils = require("./utils");
+
 
 // Modules to control application life and create native browser window
 const {
