@@ -155,9 +155,18 @@ ipcMain.handle("close-selected-project", () => {
 	return projects;
 });
 
-// project is the proj object, file is the basename of the image, rating is an integer 0-5
 ipcMain.handle("set-rating", (e, photo, rating) => {
 	photo.setRating(rating);
+});
+
+// project is the proj object, file is the basename of the image, rating is an integer 0-5
+ipcMain.handle("add-tag", (e, photo, tag) => {
+	photo.addTag(tag);
+});
+
+// project is the proj object, file is the basename of the image, rating is an integer 0-5
+ipcMain.handle("remove-tag", (e, photo, tag) => {
+	photo.removeTag(tag);
 });
 
 ipcMain.handle("archive-project", (e, name) => {
