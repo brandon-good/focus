@@ -1,9 +1,11 @@
 // Utils should have no in-project dependencies
 
+// External imports
 const path = require("node:path");
 const fs = require("fs");
 const console = require("console");
 
+// All project-wide constants should be defined here
 const JSON_PROJECTS_FILENAME = "projects.json";
 const PREVIEW_FOLDER_NAME = "previews";
 const SONY_RAW_EXTENSION = ".ARW";
@@ -45,7 +47,7 @@ function rmdir(dir) {
 		}
 	}
 	fs.rmdirSync(dir);
-};
+}
 
 module.exports = {
 	readXMP,

@@ -3,7 +3,7 @@ const { Photo } = require("./photo");
 const proj = require("./project");
 const utils = require("./utils");
 
-
+// External imports
 // Modules to control application life and create native browser window
 const {
 	app,
@@ -18,7 +18,7 @@ const console = require("console");
 const path = require("node:path");
 const util = require("util");
 
-
+// File-local constants
 const userdata_dir = app.getPath("userData");
 const install_dir_filename = "install_directory.txt";
 let install_dir = path.join(app.getPath("home"), "Focus");
@@ -183,21 +183,10 @@ ipcMain.on("return_index", async (event, args) => {
 	proj.closeAllProjects();
 });
 
-const verifyNewProject = (args) => ({
-	name:
-		args.name.length === 0 ||
-		proj.getAllProjects().some((project) => project.name === args.name),
-	nameText:
-		args.name.length === 0
-			? "Name must be at least one character"
-			: "Name already exists",
-	srcDir: !fs.existsSync(args.srcDir),
-	destDir: !fs.existsSync(args.destDir),
-});
+
 
 ipcMain.handle("create-project", (e, args) => {
-	console.log("HERE HERE:", proj.getAllProjects());
-	const errors = verifyNewProject(args);
+	const errors = proj.verifyNewProject(args);
 	if (
 		Object.values(errors).some((error) => typeof error === "boolean" && error)
 	) {
@@ -212,8 +201,9 @@ ipcMain.handle("create-project", (e, args) => {
 	proj.openProject(newProj.name);
 
 	// TODO generate from source if one is given, otherwise generate from destination (do not copy files)
+	// TODO i think we need to wait for previews to be generated before switching to page
 	proj.generateJPGPreviews(
-		path.join(newProj.filepath, proj.PREVIEW_FOLDER_NAME),
+		path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
 		fs
 			.readdirSync(newProj.srcDir)
 			.filter((file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION)
