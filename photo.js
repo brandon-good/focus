@@ -45,17 +45,8 @@ class Photo {
 	}
 
 
-	generateEmptyXMP(photo) {
-		utils.writeXMP(photo,
-			'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-			'<x:xmpmeta xmlns:x="http://ns.focus.com/meta">\n' +
-			'\t<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n' +
-			'\t\t<rdf:Description rdf:about=""\n' +
-			'\t\t\t\txmlns:xmp="http://ns.focus.com/xap/1.0/">\n' +
-			"\t\t</rdf:Description>\n" +
-			"\t</rdf:RDF>\n" +
-			"</x:xmpmeta>\n"
-		)
+	generateEmptyXMP() {
+		this.generateXMP({rating: 0, tags: []});
 	}
 
 
