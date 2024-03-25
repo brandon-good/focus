@@ -1,4 +1,5 @@
 // In-project imports
+const { Photo } = require("./photo");
 const proj = require("./project");
 
 // Modules to control application life and create native browser window
@@ -15,11 +16,6 @@ const console = require("console");
 const path = require("node:path");
 const util = require("util");
 
-const isMac = process.platform === "darwin";
-const isLinux = process.platform === "linux";
-const isWindows = process.platform === "win32";
-const isDev = process.env.NODE_ENV !== "development";
-const SONY_RAW_EXTENSION = ".ARW";
 
 const userdata_dir = app.getPath("userData");
 const install_dir_filename = "install_directory.txt";
@@ -34,7 +30,7 @@ function switchToPage(page) {
 function createWindow() {
 	protocol.handle("preview", (request) => {
 		let url = request.url.slice("preview://".length).replace(/ /g, "%20");
-		if (isWindows) {
+		if (utils.isWindows) {
 			url = `${url.slice(0, 1)}:${url.slice(1)}`.replace(/\\/g, "/");
 		}
 		console.log("file://" + url);
@@ -45,7 +41,7 @@ function createWindow() {
 	setTimeout(() => {
 		// Create the browser window.
 		mainWindow = new BrowserWindow({
-			width: isDev ? 1600 : 800,
+			width: utils.isDev ? 1600 : 800,
 			height: 600,
 			webPreferences: {
 				preload: path.join(__dirname, "preload.js"),
@@ -55,7 +51,7 @@ function createWindow() {
 		mainWindow.setMenuBarVisibility(false);
 
 		// Open the DevTools.
-		if (isDev) mainWindow.webContents.openDevTools();
+		if (utils.isDev) mainWindow.webContents.openDevTools();
 
 		configureInstallationDirectory();
 	}, 5000);
@@ -101,26 +97,9 @@ function verifyInstallDirectory() {
 	if (!fs.existsSync(install_dir)) fs.mkdirSync(install_dir);
 }
 
-let rmdir = function (dir) {
-	const list = fs.readdirSync(dir);
-	for (let i = 0; i < list.length; i++) {
-		const filename = path.join(dir, list[i]);
-		const stat = fs.statSync(filename);
-		if (filename === "." || filename === "..") {
-			// pass these files
-		} else if (stat.isDirectory()) {
-			// rmdir recursively
-			rmdir(filename);
-		} else {
-			// rm filename
-			fs.unlinkSync(filename);
-		}
-	}
-	fs.rmdirSync(dir);
-};
 
 function uninstall_app() {
-	rmdir(install_dir);
+	utils.rmdir(install_dir);
 	fs.unlinkSync(path.join(userdata_dir, install_dir_filename));
 }
 
@@ -175,8 +154,8 @@ ipcMain.handle("close-selected-project", () => {
 });
 
 // project is the proj object, file is the basename of the image, rating is an integer 0-5
-ipcMain.handle("set-rating", (e, project, file, rating) => {
-	proj.setRating(project, file, rating);
+ipcMain.handle("set-rating", (e, photo, rating) => {
+	photo.setRating(rating);
 });
 
 ipcMain.handle("archive-project", (e, name) => {
@@ -235,13 +214,13 @@ ipcMain.handle("create-project", (e, args) => {
 		path.join(newProj.filepath, proj.PREVIEW_FOLDER_NAME),
 		fs
 			.readdirSync(newProj.srcDir)
-			.filter((file) => path.extname(file).toUpperCase() === SONY_RAW_EXTENSION)
+			.filter((file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION)
 			.map((file) => path.join(args.srcDir, file))
 	);
 
 	// add photo names to the project
 	fs.readdirSync(newProj.srcDir)
-		.filter((file) => path.extname(file).toUpperCase() === SONY_RAW_EXTENSION)
+		.filter((file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION)
 		.forEach((file) => proj.addPhoto(newProj, file));
 
 	switchToPage("projects");
@@ -253,7 +232,7 @@ ipcMain.handle("create-project", (e, args) => {
 		args.destDir,
 		fs
 			.readdirSync(args.srcDir)
-			.filter((file) => path.extname(file).toUpperCase() === SONY_RAW_EXTENSION)
+			.filter((file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION)
 	)
 		.then(() => {
 			console.log("done");
@@ -289,7 +268,7 @@ ipcMain.on("uninstall_app", async (event, args) => {
 // explicitly with Cmd + Q.
 
 app.on("window-all-closed", function () {
-	// if (!isMac)
+	// if (!utils.isMac)
 	app.quit();
 	proj.closeAllProjects();
 	proj.saveUserData(install_dir);

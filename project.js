@@ -1,15 +1,12 @@
+// In-project imports
+const { Photo } = require("./photo");
+const utils = require("./utils");
+
 const path = require("node:path");
 const fs = require("fs");
 const console = require("console");
 const extractd = require("extractd");
 
-const JSON_PROJECTS_FILENAME = "projects.json";
-// TODO this is repeated in main.js, should we export it from here and import in main.js?
-const PREVIEW_FOLDER_NAME = "previews";
-const SONY_RAW_EXTENSION = ".ARW";
-
-const isMac = process.platform === "darwin";
-const isLinux = process.platform === "linux";
 
 let projects = [];
 
@@ -23,6 +20,7 @@ class Project {
 		this.open = true;
 		this.selected = true;
 		this.photoNames = []; // list of filenames of the photos
+		this.photos = [];
 	}
 }
 
@@ -31,8 +29,16 @@ function getProject(name) {
 	return projects.find((project) => project.name === name);
 }
 
-function addPhoto(project, file) {
-	project.photoNames.push(file);
+function addPhoto(project, basename) {
+	project.photoNames.push(basename);
+
+	const xmpFileName = path.basename(basename, path.extname(basename)) + ".XMP";
+	project.photos.push(new Photo(basename,
+						path.join(project.srcDir, basename),
+						path.join(project.destDir, basename),
+						path.join(project.filepath, PREVIEW_FOLDER_NAME, basename),
+						path.join(project.destDir, xmpFileName),
+	));
 }
 
 function getAllProjects() {
@@ -89,34 +95,16 @@ function projectFromJson(json) {
 	return newProj;
 }
 
-// TODO this is copied from main.js, should we export it here and import in main.js?
-// i feel like it's not project specific so it doesn't feel right to go here, but maybe we make a new file for utils? -katie
-let rmdir = function (dir) {
-	const list = fs.readdirSync(dir);
-	for (let i = 0; i < list.length; i++) {
-		const filename = path.join(dir, list[i]);
-		const stat = fs.statSync(filename);
-		if (filename === "." || filename === "..") {
-			// pass these files
-		} else if (stat.isDirectory()) {
-			// rmdir recursively
-			rmdir(filename);
-		} else {
-			// rm filename
-			fs.unlinkSync(filename);
-		}
-	}
-	fs.rmdirSync(dir);
-};
 
 function archiveProject(name) {
 	const project = getProject(name);
 	const previewsFile = path.join(project.filepath, PREVIEW_FOLDER_NAME);
-	rmdir(previewsFile);
+	utils.rmdir(previewsFile);
 	projects.remove(project);
 	project.open = false;
 	project.archived = true;
 }
+
 
 function unArchiveProject(name) {
 	const project = getProject(name);
@@ -130,12 +118,14 @@ function unArchiveProject(name) {
 	project.archived = false;
 }
 
+
 function deleteProject(name) {
 	// this assumes the user has already confirmed that they want to delete the project
 	const project = getProject(name);
-	rmdir(project.filepath);
+	utils.rmdir(project.filepath);
 	projects.remove(project);
 }
+
 
 function createProjectDir(project) {
 	// check if this exists first inside install_dir, if not create it
@@ -171,173 +161,15 @@ function generateAllXMPs(project) {
 		tags: [],
 	};
 
-	project.photoNames.forEach((file) => {
-		const baseName = path.basename(file, path.extname(file));
-		const xmpFileName = baseName + ".XMP";
-		const xmpFilePath = path.join(project.destDir, xmpFileName);
+	project.photos.forEach((photo) => {
 
 		// Skip if the XMP file already exists
-		if (fs.existsSync(xmpFilePath)) {
-			console.log(`${xmpFilePath} already exists. Skipping.`);
+		if (fs.existsSync(photo.xmpPath)) {
+			console.log(`${photo.xmpPath} already exists. Skipping.`);
 			return;
 		}
-
-		generateXMP(project, file, XMPinfo);
+		photo.generateEmptyXMP();
 	});
-}
-
-// thinking this through, we'll only ever use this function for generating new XMPs,
-// so do we need the XMPinfo param? Or can I just hardcode in no rating and no tags?
-function generateXMP(project, file, XMPinfo) {
-	const header =
-		'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-		'<x:xmpmeta xmlns:x="http://ns.focus.com/meta">\n' +
-		'\t<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n' +
-		'\t\t<rdf:Description rdf:about=""\n' +
-		'\t\t\t\txmlns:xmp="http://ns.focus.com/xap/1.0/">\n';
-
-	let rating = "";
-	if (XMPinfo["rating"] !== 0) {
-		rating = `\t\t\t<xmp:Rating>${XMPinfo["rating"]}</xmp:Rating>\n`;
-	}
-
-	let tags = "";
-	if (XMPinfo["tags"].length !== 0) {
-		console.log(XMPinfo["tags"]);
-		tags = `\t\t\t<xmp:Label>${XMPinfo["tags"].join(", ")}</xmp:Label>\n`;
-	}
-
-	// add any other tags here if necessary
-
-	const footer =
-		"\t\t</rdf:Description>\n" + "\t</rdf:RDF>\n" + "</x:xmpmeta>\n";
-
-	const fileContents = header + rating + tags + footer;
-	writeXMP(project, file, fileContents);
-}
-
-// assuming that the filename given is only the basename
-function readXMP(project, file) {
-	const baseName = path.basename(file, path.extname(file));
-	const xmpFileName = baseName + ".XMP";
-	const xmpFilePath = path.join(project.destDir, xmpFileName);
-	try {
-		return fs.readFileSync(xmpFilePath, "utf8");
-	} catch (err) {
-		console.error("ERROR READING XMP");
-		return "";
-	}
-}
-
-function writeXMP(project, file, fileContents) {
-	const baseName = path.basename(file, path.extname(file));
-	const xmpFileName = baseName + ".XMP";
-	const xmpFilePath = path.join(project.destDir, xmpFileName);
-
-	fs.writeFile(xmpFilePath, fileContents, (err) => {
-		if (err) console.log("ERROR SAVING XMP");
-	});
-}
-
-function setRating(project, file, rating) {
-	if (rating < 0 || rating > 5) {
-		throw Error("rating must be between 0 and 5 inclusive.");
-	}
-	let xmp = readXMP(project, file);
-
-	const startIndex = xmp.indexOf("<xmp:Rating>");
-	const endIndex = xmp.indexOf("</xmp:Rating>");
-
-	if (startIndex !== -1 && rating !== 0) {
-		// if the line exists and we want to update it
-		xmp =
-			xmp.substring(0, startIndex + "<xmp:Rating>".length) +
-			rating.toString() +
-			xmp.substring(endIndex, xmp.length);
-	} else if (startIndex !== -1 && rating === 0) {
-		// if the line exists and we want to remove it
-		xmp =
-			xmp.substring(0, startIndex - "\n".length) +
-			xmp.substring(endIndex + "</xmp:Rating>".length, xmp.length);
-	} else if (startIndex === -1 && rating !== 0) {
-		// if we want to add the line and the line doesn't exist
-		const searchStr = 'xmlns:xmp="http://ns.focus.com/xap/1.0/">\n';
-		const insertIndex = xmp.indexOf(searchStr);
-		const beforeInsert = xmp.substring(0, insertIndex + searchStr.length);
-		const afterInsert = xmp.substring(
-			insertIndex + searchStr.length,
-			xmp.length
-		);
-		const newRating = `\t\t\t<xmp:Rating>${rating}</xmp:Rating>\n`;
-
-		console.log(
-			"XMP before: ",
-			xmp,
-			"\nBefore: ",
-			beforeInsert,
-			"\nAfter: ",
-			afterInsert
-		);
-		xmp = beforeInsert + newRating + afterInsert;
-	} // else (startIndex === -1 && rating === 0), if the line doesn't exist and we don't want to add it, do nothing
-
-	writeXMP(project, file, xmp);
-}
-
-function addTag(project, file, tag) {
-	// TODO get the tag, add to list, write list of tags to XMP. similar structure to setRating
-}
-
-function removeTag(project, file, tag) {
-	// TODO same as addTag but remove from list of tags instead
-}
-
-function getXMPInfo(project, xmpFilePath) {
-	// TODO this should be a dictionary with {"rating": 0, "tags": []}
-	const xmpInfo = {};
-	let xmp = readXMP(project, xmpFilePath);
-
-	// get rating
-	const ratingStartIndex = xmp.indexOf("<xmp:Rating>");
-	const ratingEndIndex = xmp.indexOf("</xmp:Rating>");
-	if (ratingStartIndex === -1) {
-		console.log("no rating tag found! must be 0.");
-		xmpInfo.rating = 0;
-	} else {
-		let ratingStr = xmp.substring(
-			ratingStartIndex + "<xmp:Rating>".length,
-			ratingEndIndex
-		);
-		console.log("rating = " + ratingStr);
-		try {
-			xmpInfo.rating = parseInt(ratingStr);
-		} catch (exc) {
-			console.log(
-				"ERROR parsing rating from xmp" + xmpFilePath + exc.toString()
-			);
-		}
-	}
-	// get tags
-	const tagsStartIndex = xmp.indexOf("<xmp:Label>");
-	const tagsEndIndex = xmp.indexOf("</xmp:Label>");
-
-	if (tagsStartIndex === -1) {
-		xmpInfo.tags = [];
-	} else {
-		const tagsList = xmp
-			.substring(tagsStartIndex + "<xmp:Label>".length, tagsEndIndex)
-			.split(", ");
-		xmpInfo.tags = tagsList;
-		console.log("tags include " + tagsList.toString());
-	}
-	return xmpInfo;
-}
-
-function getRating(project, file) {
-	return getXMPInfo(project, file).rating;
-}
-function getTags(project, file) {
-	return getXMPInfo(project, file).tags;
 }
 
 function saveProject(project) {
@@ -383,7 +215,7 @@ function verifyNewProject(name, srcDir, destDir) {
 
 	// check unique name
 	let duplicate = false;
-	projects.projectList.forEach((proj) => {
+	projects.forEach((proj) => {
 		if (name === proj.name) duplicate = true;
 	});
 
