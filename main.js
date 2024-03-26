@@ -192,6 +192,10 @@ ipcMain.handle("create-project", (e, args) => {
 	) {
 		return errors;
 	}
+
+	const hasSource = len(args.srcDir) > 0;
+	const photoLoc = hasSource ? args.srcDir : args.destDir;
+
 	const newProj = proj.newProject(
 		args.name,
 		args.srcDir,
@@ -205,33 +209,35 @@ ipcMain.handle("create-project", (e, args) => {
 	proj.generateJPGPreviews(
 		path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
 		fs
-			.readdirSync(newProj.srcDir)
+			.readdirSync(photoLoc)
 			.filter((file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION)
-			.map((file) => path.join(args.srcDir, file))
+			.map((file) => path.join(photoLoc, file))
 	);
 
 	// add photo names to the project
-	fs.readdirSync(newProj.srcDir)
+	fs.readdirSync(photoLoc)
 		.filter((file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION)
 		.forEach((file) => proj.addPhoto(newProj, file));
 
 	switchToPage("projects");
 
-	// this should occur in the background hopefully
-	// TODO do not copy files if we are creating a project from existing destination
-	copyFiles(
-		args.srcDir,
-		args.destDir,
-		fs
+	// TODO this should occur in the background hopefully
+	// do not copy files if we are creating a project from existing destination
+	if (hasSource) {
+		copyFiles(
+			args.srcDir,
+			args.destDir,
+			fs
 			.readdirSync(args.srcDir)
 			.filter((file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION)
-	)
-		.then(() => {
-			console.log("done");
-		})
-		.catch((err) => {
-			console.log(err);
-		});
+		)
+			.then(() => {
+				console.log("done");
+			})
+			.catch((err) => {
+				console.log(err);
+			});
+	}
 
 	proj.generateAllXMPs(newProj);
 	return errors;

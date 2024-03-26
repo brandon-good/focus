@@ -121,17 +121,19 @@ function unArchiveProject(name) {
 	generateJPGPreviews(
 		path.join(project.filepath, utils.PREVIEW_FOLDER_NAME),
 		fs
-			.readdirSync(newProj.destDir) // TODO newProj and args are undefined (bennett!)
+			.readdirSync(project.destDir) // TODO newProj and args are undefined (bennett!)
 			.filter((file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION)
-			.map((file) => path.join(args.destDir, file))
+			.map((file) => path.join(project.destDir, file))
 	);
 	project.archived = false;
+	project.open = false;
 }
 
 
 function deleteProject(name) {
 	// this assumes the user has already confirmed that they want to delete the project
 	const project = getProject(name);
+	project.open = false;
 	utils.rmdir(project.filepath);
 	projects.remove(project);
 }
