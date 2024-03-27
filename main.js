@@ -1,5 +1,6 @@
 // In-project imports
 const { Photo } = require("./photo");
+const keybinds = require("./keybinds");
 const proj = require("./project");
 const utils = require("./utils");
 
@@ -24,9 +25,11 @@ const install_dir_filename = "install_directory.txt";
 let install_dir = path.join(app.getPath("home"), "Focus");
 
 let mainWindow;
+let currentPage;
 
 function switchToPage(page) {
 	mainWindow.loadURL(`http://localhost:3000/${page}`);
+	currentPage = page;
 }
 
 function createWindow() {
@@ -51,6 +54,7 @@ function createWindow() {
 			},
 		});
 		mainWindow.setMenuBarVisibility(false);
+		mainWindow.webContents.on('before-input-event', (event, input) => keybinds.handle(event, input, currentPage))
 
 		// Open the DevTools.
 		if (utils.isDev) mainWindow.webContents.openDevTools();
