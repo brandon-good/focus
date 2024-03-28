@@ -54,7 +54,9 @@ function createWindow() {
 			},
 		});
 		mainWindow.setMenuBarVisibility(false);
-		mainWindow.webContents.on('before-input-event', (event, input) => keybinds.handle(event, input, currentPage))
+		mainWindow.webContents.on("before-input-event", (event, input) =>
+			keybinds.handle(event, input, currentPage)
+		);
 
 		// Open the DevTools.
 		if (utils.isDev) mainWindow.webContents.openDevTools();
@@ -77,9 +79,9 @@ app.whenReady().then(() => {
 
 // TODO should this be a function in the project file?
 const copyFilePromise = util.promisify(fs.copyFile);
-function copyFiles(srcDir, destDir, files) {
+async function copyFiles(srcDir, destDir, files) {
 	console.log("files to copy " + files);
-	return Promise.all(
+	await Promise.all(
 		files.map((f) =>
 			copyFilePromise(path.join(srcDir, f), path.join(destDir, f))
 		)
@@ -102,7 +104,6 @@ function configureInstallationDirectory() {
 function verifyInstallDirectory() {
 	if (!fs.existsSync(install_dir)) fs.mkdirSync(install_dir);
 }
-
 
 function uninstall_app() {
 	utils.rmdir(install_dir);
@@ -177,8 +178,8 @@ ipcMain.handle("archive-project", (e, name) => {
 	proj.archiveProject(proj.getProject(name));
 });
 
-ipcMain.handle("unarchive-project", (e, name) => {
-	proj.unArchiveProject(proj.getProject(name));
+ipcMain.handle("unarchive-project", async (e, name) => {
+	await proj.unArchiveProject(proj.getProject(name));
 });
 
 ipcMain.handle("delete-project", (e, name) => {
@@ -196,9 +197,7 @@ ipcMain.on("return_index", async (event, args) => {
 	proj.closeAllProjects();
 });
 
-
-
-ipcMain.handle("create-project", (e, args) => {
+ipcMain.handle("create-project", async (e, args) => {
 	const errors = proj.verifyNewProject(args);
 	if (
 		Object.values(errors).some((error) => typeof error === "boolean" && error)
@@ -206,8 +205,7 @@ ipcMain.handle("create-project", (e, args) => {
 		return errors;
 	}
 
-	const hasSource = len(args.srcDir) > 0;
-	const photoLoc = hasSource ? args.srcDir : args.destDir;
+	const photoLoc = args.srcDir ? args.srcDir : args.destDir;
 
 	const newProj = proj.newProject(
 		args.name,
@@ -217,42 +215,46 @@ ipcMain.handle("create-project", (e, args) => {
 	);
 	proj.openProject(newProj.name);
 
-	// TODO generate from source if one is given, otherwise generate from destination (do not copy files)
-	// TODO i think we need to wait for previews to be generated before switching to page
-	proj.generateJPGPreviews(
-		path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
-		fs
-			.readdirSync(photoLoc)
-			.filter((file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION)
-			.map((file) => path.join(photoLoc, file))
-	);
-
 	// add photo names to the project
 	fs.readdirSync(photoLoc)
-		.filter((file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION)
+		.filter(
+			(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
+		)
 		.forEach((file) => proj.addPhoto(newProj, file));
 
 	switchToPage("projects");
 
+	// TODO generate from source if one is given, otherwise generate from destination (do not copy files)
+	// TODO i think we need to wait for previews to be generated before switching to page
+	await proj.generateJPGPreviews(
+		path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
+		fs
+			.readdirSync(photoLoc)
+			.filter(
+				(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
+			)
+			.map((file) => path.join(photoLoc, file))
+	);
+
 	// TODO this should occur in the background hopefully
 	// do not copy files if we are creating a project from existing destination
-	if (hasSource) {
-		copyFiles(
+	if (args.srcDir) {
+		await copyFiles(
 			args.srcDir,
 			args.destDir,
 			fs
-			.readdirSync(args.srcDir)
-			.filter((file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION)
-		)
-			.then(() => {
-				console.log("done");
-			})
-			.catch((err) => {
-				console.log(err);
-			});
+				.readdirSync(args.srcDir)
+				.filter(
+					(file) =>
+						path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
+				)
+		);
 	}
 
 	proj.generateAllXMPs(newProj);
+
+	proj.setLoading(false);
+	mainWindow.webContents.send("update-projects", proj.getAllProjects());
 	return errors;
 });
 

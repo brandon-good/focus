@@ -5,7 +5,9 @@ import HomeIcon from "@mui/icons-material/Home";
 import NewProjectMenu from "./NewProjectMenu";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import Button from "@mui/material/Button";
+import LinearProgress from "@mui/material/LinearProgress";
 import Rating from "@mui/material/Rating";
+import Skeleton from "@mui/material/Skeleton";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 
@@ -16,6 +18,9 @@ export default function Projects() {
 
 	useEffect(() => {
 		window.ipcRenderer.invoke("get-projects").then((newProjects) => {
+			setProjects([...newProjects]);
+		});
+		window.ipcRenderer.on("update-projects", (newProjects) => {
 			setProjects([...newProjects]);
 		});
 	}, []);
@@ -73,7 +78,46 @@ export default function Projects() {
 						Export to Lightroom
 					</Button>
 				</header>
-				{projects[projectIndex].photoNames.length > 0 && (
+				{projects[projectIndex].loading ? (
+					<div id="project-container">
+						<div id="preview-sidebar">
+							{projects[projectIndex].photoNames.map((photoName) => (
+								<div className="preview" key={photoName}>
+									<Skeleton sx={{ height: "1rem" }} variant="rounded" />
+									<Skeleton sx={{ height: "7rem" }} variant="rounded" />
+									<div className="skeleton-rating-container">
+										<Skeleton
+											sx={{ height: "1rem", width: "1rem" }}
+											variant="circular"
+										/>
+										<Skeleton
+											sx={{ height: "1rem", width: "1rem" }}
+											variant="circular"
+										/>{" "}
+										<Skeleton
+											sx={{ height: "1rem", width: "1rem" }}
+											variant="circular"
+										/>{" "}
+										<Skeleton
+											sx={{ height: "1rem", width: "1rem" }}
+											variant="circular"
+										/>{" "}
+										<Skeleton
+											sx={{ height: "1rem", width: "1rem" }}
+											variant="circular"
+										/>
+									</div>
+								</div>
+							))}
+						</div>
+						<div id="preview-selected">
+							<div>
+								<span>Transferring your files...</span>
+								<LinearProgress />
+							</div>
+						</div>
+					</div>
+				) : (
 					<div id="project-container">
 						<div id="preview-sidebar">
 							{projects[projectIndex].photoNames.map((photoName, i) => (
@@ -86,6 +130,7 @@ export default function Projects() {
 								>
 									<span>{photoName}</span>
 									<img
+										alt={photoName}
 										onClick={() => setPreviewIndex(i)}
 										src={`preview://${projects[projectIndex].filepath.replace(
 											/\\/g,
@@ -99,6 +144,7 @@ export default function Projects() {
 						</div>
 						<div id="preview-selected">
 							<img
+								alt=""
 								src={`preview://${projects[projectIndex].filepath.replace(
 									/\\/g,
 									"/"

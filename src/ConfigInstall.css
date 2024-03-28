@@ -11,3 +11,7 @@
 	display: flex;
 	gap: 0.5rem;
 }
+
+#config-install-container span {
+	color: white;
+}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import "./ConfigInstall.css";
-import { Button } from "@mui/material";
+import Button from "@mui/material/Button";
 
 export default function Home() {
 	const [installDir, setInstallDir] = useState(null);

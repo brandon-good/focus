@@ -10,6 +10,10 @@
 	width: 9rem;
 }
 
+.preview > * {
+	width: 100%;
+}
+
 .preview img {
 	border-radius: 0.5rem;
 	width: 8rem;
@@ -18,6 +22,12 @@
 .preview > span:first-child {
 	color: white;
 	font-size: 0.8rem;
+	text-align: center;
+}
+
+.skeleton-rating-container {
+	display: flex;
+	justify-content: space-around;
 }
 
 #preview-sidebar {
@@ -30,8 +40,16 @@
 }
 
 #preview-selected {
+	align-items: center;
 	display: flex;
 	justify-content: center;
+	width: 100%;
+}
+
+#preview-selected div {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
 }
 
 #preview-selected img {
@@ -39,6 +57,11 @@
 	max-width: calc(100vw - 12rem);
 	object-fit: contain;
 	padding: 1rem;
+}
+
+#preview-selected span {
+	color: white;
+	font-size: 2rem;
 }
 
 #project-container {

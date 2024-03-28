@@ -12,3 +12,7 @@
 	position: absolute;
 	top: 1rem;
 }
+
+#new-project-container .MuiFormControlLabel-label {
+	color: white;
+}

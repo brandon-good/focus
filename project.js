@@ -8,9 +8,7 @@ const fs = require("fs");
 const console = require("console");
 const extractd = require("extractd");
 
-
 let projects = [];
-
 
 class Project {
 	constructor(name, srcDir, destDir, installDir) {
@@ -23,37 +21,36 @@ class Project {
 		this.selected = true;
 		this.photoNames = []; // list of filenames of the photos
 		this.photos = [];
+		this.loading = true;
 	}
 }
 
-
 function getProject(name) {
-	console.log(name);
 	return projects.find((project) => project.name === name);
 }
-
 
 function addPhoto(project, basename) {
 	project.photoNames.push(basename);
 
 	const xmpFileName = path.basename(basename, path.extname(basename)) + ".XMP";
-	project.photos.push(new Photo(basename,
-						path.join(project.srcDir, basename),
-						path.join(project.destDir, basename),
-						path.join(project.filepath, utils.PREVIEW_FOLDER_NAME, basename),
-						path.join(project.destDir, xmpFileName),
-	));
+	project.photos.push(
+		new Photo(
+			basename,
+			project.srcDir ? path.join(project.srcDir, basename) : "",
+			path.join(project.destDir, basename),
+			path.join(project.filepath, utils.PREVIEW_FOLDER_NAME, basename),
+			path.join(project.destDir, xmpFileName)
+		)
+	);
 }
 
 function getAllProjects() {
 	return projects;
 }
 
-
 function getOpenProjects() {
 	return projects.filter((project) => project.open);
 }
-
 
 function selectProject(name) {
 	projects = projects.map((project) => ({ ...project, selected: false }));
@@ -61,7 +58,6 @@ function selectProject(name) {
 	project.selected = true;
 	return projects;
 }
-
 
 function openProject(name) {
 	projects = projects.map((project) => ({ ...project, selected: false }));
@@ -71,14 +67,12 @@ function openProject(name) {
 	return projects;
 }
 
-
 function closeSelectedProject() {
 	const selectedProject = projects.find((project) => project.selected);
 	selectedProject.open = false;
 	selectedProject.selected = false;
 	return projects;
 }
-
 
 function closeAllProjects() {
 	return projects.map((project) => ({
@@ -87,7 +81,6 @@ function closeAllProjects() {
 		selected: false,
 	}));
 }
-
 
 function newProject(name, srcDir, destDir, installDir) {
 	const newProj = new Project(name, srcDir, destDir, installDir);
@@ -105,7 +98,6 @@ function projectFromJson(json) {
 	return newProj;
 }
 
-
 function archiveProject(name) {
 	const project = getProject(name);
 	const previewsFile = path.join(project.filepath, utils.PREVIEW_FOLDER_NAME);
@@ -115,20 +107,20 @@ function archiveProject(name) {
 	project.archived = true;
 }
 
-
-function unArchiveProject(name) {
+async function unArchiveProject(name) {
 	const project = getProject(name);
-	generateJPGPreviews(
+	await generateJPGPreviews(
 		path.join(project.filepath, utils.PREVIEW_FOLDER_NAME),
 		fs
 			.readdirSync(project.destDir) // TODO newProj and args are undefined (bennett!)
-			.filter((file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION)
+			.filter(
+				(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
+			)
 			.map((file) => path.join(project.destDir, file))
 	);
 	project.archived = false;
 	project.open = false;
 }
-
 
 function deleteProject(name) {
 	// this assumes the user has already confirmed that they want to delete the project
@@ -137,7 +129,6 @@ function deleteProject(name) {
 	utils.rmdir(project.filepath);
 	projects.remove(project);
 }
-
 
 function createProjectDir(project) {
 	// check if this exists first inside install_dir, if not create it
@@ -148,8 +139,7 @@ function createProjectDir(project) {
 	saveProject(project);
 }
 
-
-function generateJPGPreviews(previewLocation, files) {
+async function generateJPGPreviews(previewLocation, files) {
 	// files is passed as an argument because we might load the files from elsewhere
 	// it is possible that we have to recreate the thumbnails based on the destination copied files
 	// DO NOT OVERWRITE EXISTING FILES
@@ -157,7 +147,7 @@ function generateJPGPreviews(previewLocation, files) {
 	console.log("begin preview generation");
 	console.log(previewLocation);
 	console.log(files);
-	(async () => {
+	await (async () => {
 		const done = await extractd.generate(files, {
 			destination: previewLocation,
 			persist: true,
@@ -168,10 +158,8 @@ function generateJPGPreviews(previewLocation, files) {
 	console.log("finished preview generation");
 }
 
-
 function generateAllXMPs(project) {
 	project.photos.forEach((photo) => {
-
 		// Skip if the XMP file already exists
 		if (fs.existsSync(photo.xmpPath)) {
 			console.log(`${photo.xmpPath} already exists. Skipping.`);
@@ -181,6 +169,10 @@ function generateAllXMPs(project) {
 	});
 }
 
+function setLoading(loading) {
+	projects = projects.map((project) => ({ ...project, loading: loading }));
+	return projects;
+}
 
 function saveProject(project) {
 	// save to this.save_dir
@@ -197,17 +189,14 @@ function saveProject(project) {
 	});
 }
 
-
 function newUserProjects() {
 	// TODO double check this works
 	return Object.create(projects);
 }
 
-
 function userProjectsFromJson(json) {
 	return JSON.parse(json);
 }
-
 
 function addProject(project) {
 	// remove all_user_projects
@@ -215,15 +204,16 @@ function addProject(project) {
 	projects.push(project);
 }
 
-
 function saveUserProjects(install_dir) {
 	// save to install_dir
-	let storedProjectsFilePath = path.join(install_dir, utils.JSON_PROJECTS_FILENAME);
+	let storedProjectsFilePath = path.join(
+		install_dir,
+		utils.JSON_PROJECTS_FILENAME
+	);
 	fs.writeFile(storedProjectsFilePath, JSON.stringify(projects), (err) => {
 		if (err) console.log("ERROR SAVING USER PROJECT LIST");
 	});
 }
-
 
 const verifyNewProject = (args) => ({
 	name:
@@ -233,10 +223,9 @@ const verifyNewProject = (args) => ({
 		args.name.length === 0
 			? "Name must be at least one character"
 			: "Name already exists",
-	srcDir: !fs.existsSync(args.srcDir),
+	srcDir: args.srcDir && !fs.existsSync(args.srcDir),
 	destDir: !fs.existsSync(args.destDir),
 });
-
 
 function loadProjects(install_dir) {
 	// returns a user projects object
@@ -264,12 +253,10 @@ function loadProjects(install_dir) {
 	return "home";
 }
 
-
 function saveUserData(install_dir) {
 	saveUserProjects(install_dir);
 	projects.forEach((project) => saveProject(project));
 }
-
 
 module.exports = {
 	// these are methods
@@ -284,6 +271,7 @@ module.exports = {
 	newProject,
 	generateJPGPreviews,
 	generateAllXMPs,
+	setLoading,
 	saveProject,
 	addProject,
 	verifyNewProject,
