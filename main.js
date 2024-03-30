@@ -224,8 +224,6 @@ ipcMain.handle("create-project", async (e, args) => {
 
 	switchToPage("projects");
 
-	// TODO generate from source if one is given, otherwise generate from destination (do not copy files)
-	// TODO i think we need to wait for previews to be generated before switching to page
 	await proj.generateJPGPreviews(
 		path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
 		fs
@@ -236,7 +234,7 @@ ipcMain.handle("create-project", async (e, args) => {
 			.map((file) => path.join(photoLoc, file))
 	);
 
-	// TODO this should occur in the background hopefully
+	// this should happen in the background ideally
 	// do not copy files if we are creating a project from existing destination
 	if (args.srcDir) {
 		await copyFiles(

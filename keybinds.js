@@ -1,5 +1,5 @@
 function handle(event, input, page) {
-	if (page != 'projects') return;  // for now, do not record input unless on project page
+	if (page !== 'projects') return;  // for now, do not record input unless on project page
 	
 	console.log("pressed " + input.key.toLowerCase())
 	
