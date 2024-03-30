@@ -15,36 +15,13 @@ class Photo {
 		this.tags = [];
 		this.selected = false;
 	}
+}
 
-	setRating(rating) {
-		if (rating < 0 || rating > 5) {
-			throw Error("rating must be between 0 and 5 inclusive.");
-		}
-		this.rating = rating;
-		let xmpInfo = this.readXMP();
-		xmpInfo.rating = rating;
-		this.generateXMP(xmpInfo);
+function generateEmptyXMP() {
+		photo.generateXMP({ rating: 0, tags: [] });
 	}
 
-	addTag(tag) {
-		this.tags.push(tag);
-		let xmpInfo = this.readXMP();
-		xmpInfo.tags.push(tag);
-		this.generateXMP(xmpInfo);
-	}
-
-	removeTag(tag) {
-		this.tags.filter((item) => item !== tag);
-		let xmpInfo = this.readXMP();
-		xmpInfo.tags.filter((item) => item !== tag);
-		this.generateXMP(xmpInfo);
-	}
-
-	generateEmptyXMP() {
-		this.generateXMP({ rating: 0, tags: [] });
-	}
-
-	generateXMP(XMPinfo) {
+function generateXMP(photo, XMPinfo) {
 		const header =
 			'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
 			'<x:xmpmeta xmlns:x="http://ns.focus.com/meta">\n' +
@@ -69,12 +46,12 @@ class Photo {
 			"\t\t</rdf:Description>\n" + "\t</rdf:RDF>\n" + "</x:xmpmeta>\n";
 
 		const fileContents = header + rating + tags + footer;
-		utils.writeXMP(this, fileContents);
+		utils.writeXMP(photo, fileContents);
 	}
 
-	readXMP() {
+function readXMP(photo) {
 		const xmpInfo = {};
-		let xmp = utils.readXMP(this);
+		let xmp = utils.readXMP(photo);
 
 		// get rating
 		const ratingStartIndex = xmp.indexOf("<xmp:Rating>");
@@ -92,7 +69,7 @@ class Photo {
 				xmpInfo.rating = parseInt(ratingStr);
 			} catch (exc) {
 				console.log(
-					"ERROR parsing rating from xmp" + this.xmpPath + exc.toString()
+					"ERROR parsing rating from xmp" + photo.xmpPath + exc.toString()
 				);
 			}
 		}
@@ -111,14 +88,55 @@ class Photo {
 			console.log("tags include " + tagsList.toString());
 		}
 
-		// update this obj with xmp info
-		this.rating = xmpInfo.rating;
-		this.tags = xmpInfo.tags;
+		// update photo obj with xmp info
+		photo.rating = xmpInfo.rating;
+		photo.tags = xmpInfo.tags;
 
 		return xmpInfo;
+	}
+
+function setRating(photo, rating) {
+	if (rating < 0 || rating > 5) {
+		throw Error("rating must be between 0 and 5 inclusive.");
+	}
+	photo.rating = rating;
+	const xmpInfo = readXMP(photo);
+	xmpInfo.rating = rating;
+	generateXMP(photo, xmpInfo);
+}
+
+function addTag(photo, tag) {
+	photo.tags.push(tag);
+	const xmpInfo = readXMP(photo);
+	xmpInfo.tags.push(tag);
+	generateXMP(photo, xmpInfo);
+}
+
+function removeTag(photo, tag) {
+	photo.tags = photo.tags.filter((item) => item !== tag);
+	const xmpInfo = readXMP(photo);
+	xmpInfo.tags = xmpInfo.tags.filter((item) => item !== tag);
+	generateXMP(photo, xmpInfo);
+}
+
+function hasTag(photo, tag) {
+	return photo.tags.includes(tag);
+}
+
+function toggleTag(photo, tag) {
+	if (hasTag(photo, tag)) {
+		console.log("removing");
+		removeTag(photo, tag);
+	} else {
+		console.log("adding");
+		addTag(photo, tag);
 	}
 }
 
 module.exports = {
 	Photo,
+	setRating,
+	removeTag,
+	addTag,
+	toggleTag,
 };

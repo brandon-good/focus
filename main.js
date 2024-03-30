@@ -55,7 +55,7 @@ function createWindow() {
 		});
 		mainWindow.setMenuBarVisibility(false);
 		mainWindow.webContents.on("before-input-event", (event, input) =>
-			keybinds.handle(event, input, currentPage)
+			keybinds.handle(event, input, currentPage, proj.getAllProjects())
 		);
 
 		// Open the DevTools.
