@@ -56,14 +56,14 @@ function selectProject(name) {
 	projects = projects.map((project) => ({ ...project, selected: false }));
 	const project = getProject(name);
 	project.selected = true;
+	project.photos[0].selected = true;  // sets the first photo to be selected
 	return projects;
 }
 
 function openProject(name) {
-	projects = projects.map((project) => ({ ...project, selected: false }));
+	selectProject(name);
 	const project = getProject(name);
 	project.open = true;
-	project.selected = true;
 	return projects;
 }
 
