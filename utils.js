@@ -15,7 +15,6 @@ const isLinux = process.platform === "linux";
 const isWindows = process.platform === "win32";
 const isDev = process.env.NODE_ENV !== "development";
 
-
 function readXMP(photo) {
 	try {
 		return fs.readFileSync(photo.xmpPath, "utf8");
@@ -25,8 +24,8 @@ function readXMP(photo) {
 	}
 }
 
-function writeXMP(photo, fileContents) {
-	fs.writeFile(photo.xmpPath, fileContents, (err) => {
+function writeXMP(photo, contents) {
+	fs.writeFile(photo.xmpPath, contents, (err) => {
 		if (err) console.log("ERROR SAVING XMP");
 	});
 }
@@ -60,5 +59,5 @@ module.exports = {
 	isMac,
 	isLinux,
 	isWindows,
-	isDev
-}
+	isDev,
+};

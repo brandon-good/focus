@@ -7,7 +7,6 @@
 	flex-direction: column;
 	gap: 0.5rem;
 	padding: 0.5rem;
-	width: 9rem;
 }
 
 .preview > * {
@@ -16,7 +15,7 @@
 
 .preview img {
 	border-radius: 0.5rem;
-	width: 8rem;
+	width: 100%;
 }
 
 .preview > span:first-child {
@@ -35,8 +34,9 @@
 	display: flex;
 	flex-direction: column;
 	gap: 1rem;
+	overflow-y: scroll;
 	padding: 1rem;
-	width: min-content;
+	width: 15rem;
 }
 
 #preview-selected {
@@ -54,7 +54,7 @@
 
 #preview-selected img {
 	max-height: calc(100vh - 4rem);
-	max-width: calc(100vw - 12rem);
+	max-width: calc(100vw - 15rem);
 	object-fit: contain;
 	padding: 1rem;
 }
@@ -66,11 +66,11 @@
 
 #project-container {
 	display: flex;
-	height: 100%;
+	height: calc(100% - 3rem);
 }
 
 #projects-container {
-	height: calc(100vh - 3rem);
+	height: 100%;
 }
 
 #projects-container header {

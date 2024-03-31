@@ -50,11 +50,12 @@ export default function CreateProject() {
 						label="Transfer from..."
 						onClick={() =>
 							window.ipcRenderer
-								.invoke("open-dialog", {
-									configInstall: false,
-									buttonLabel: "Source Here",
-									title: "Choose Source Directory",
-								})
+								.invoke(
+									"open-dialog",
+									false,
+									"Source Here",
+									"Choose Source Directory"
+								)
 								.then((newSrcDir) => {
 									if (newSrcDir) setSrcDir(newSrcDir);
 								})
@@ -67,11 +68,12 @@ export default function CreateProject() {
 						label="Transfer to..."
 						onClick={() =>
 							window.ipcRenderer
-								.invoke("open-dialog", {
-									configInstall: false,
-									buttonLabel: "Destination Here",
-									title: "Choose Destination Directory",
-								})
+								.invoke(
+									"open-dialog",
+									false,
+									"Destination Here",
+									"Choose Destination Directory"
+								)
 								.then((newDestDir) => {
 									if (newDestDir) setDestDir(newDestDir);
 								})
@@ -86,11 +88,7 @@ export default function CreateProject() {
 					label="Import from..."
 					onClick={() =>
 						window.ipcRenderer
-							.invoke("open-dialog", {
-								configInstall: false,
-								buttonLabel: "Import Here",
-								title: "Choose Directory",
-							})
+							.invoke("open-dialog", false, "Import Here", "Choose Directory")
 							.then((newDestDir) => {
 								if (newDestDir) setDestDir(newDestDir);
 							})
@@ -101,11 +99,12 @@ export default function CreateProject() {
 			<Button
 				onClick={() =>
 					window.ipcRenderer
-						.invoke("create-project", {
-							name: name,
-							srcDir: transferFiles ? srcDir : "",
-							destDir: destDir,
-						})
+						.invoke(
+							"create-project",
+							name,
+							transferFiles ? srcDir : "",
+							destDir
+						)
 						.then((newErrors) => setErrors(newErrors))
 				}
 				variant="contained"

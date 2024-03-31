@@ -1,7 +1,7 @@
 // In-project imports
-const { Photo } = require("./photo");
 const keybinds = require("./keybinds");
 const proj = require("./project");
+const photoTools = require("./photo");
 const utils = require("./utils");
 
 // External imports
@@ -54,9 +54,12 @@ function createWindow() {
 			},
 		});
 		mainWindow.setMenuBarVisibility(false);
-		mainWindow.webContents.on("before-input-event", (event, input) =>
-			keybinds.handle(event, input, currentPage, proj.getAllProjects())
-		);
+		mainWindow.webContents.on("before-input-event", (e, input) => {
+			if (input.type === "keyDown" && currentPage === "projects") {
+				keybinds.handle(e, input, proj.getSelectedPhoto());
+				mainWindow.webContents.send("update-projects", proj.getProjects());
+			}
+		});
 
 		// Open the DevTools.
 		if (utils.isDev) mainWindow.webContents.openDevTools();
@@ -112,14 +115,14 @@ function uninstall_app() {
 
 // IPC HANDLERS
 
-ipcMain.handle("open-dialog", async (e, args) => {
+ipcMain.handle("open-dialog", async (e, configInstall, buttonLabel, title) => {
 	const import_from = await dialog.showOpenDialog({
-		buttonLabel: args.buttonLabel,
+		buttonLabel: buttonLabel,
 		properties: ["openDirectory"],
-		title: args.title,
+		title: title,
 	});
 	return !import_from.canceled
-		? args.configInstall
+		? configInstall
 			? path.join(import_from.filePaths[0], "Focus")
 			: import_from.filePaths[0]
 		: null;
@@ -140,7 +143,7 @@ ipcMain.on("set-install-dir", (e, dir) => {
 });
 
 ipcMain.handle("get-project-names", () =>
-	proj.getAllProjects().map((proj) => proj.name)
+	proj.getProjects().map((proj) => proj.name)
 );
 
 ipcMain.handle("open-project", (e, name) => {
@@ -160,20 +163,6 @@ ipcMain.handle("close-selected-project", () => {
 	return projects;
 });
 
-ipcMain.handle("set-rating", (e, photo, rating) => {
-	photo.setRating(rating);
-});
-
-// project is the proj object, file is the basename of the image, rating is an integer 0-5
-ipcMain.handle("add-tag", (e, photo, tag) => {
-	photo.addTag(tag);
-});
-
-// project is the proj object, file is the basename of the image, rating is an integer 0-5
-ipcMain.handle("remove-tag", (e, photo, tag) => {
-	photo.removeTag(tag);
-});
-
 ipcMain.handle("archive-project", (e, name) => {
 	proj.archiveProject(proj.getProject(name));
 });
@@ -188,40 +177,26 @@ ipcMain.handle("delete-project", (e, name) => {
 
 ipcMain.handle("get-open-projects", () => proj.getOpenProjects());
 
-ipcMain.on("return_index", async (event, args) => {
-	await mainWindow.loadFile("index.html");
-	// TODO close currently active project
-
-	// saves and removes all active projects
-	proj.getOpenProjects().forEach((this_proj) => proj.saveProject(this_proj));
-	proj.closeAllProjects();
-});
-
-ipcMain.handle("create-project", async (e, args) => {
-	const errors = proj.verifyNewProject(args);
+ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
+	const errors = proj.verifyNewProject(name, srcDir, destDir);
 	if (
 		Object.values(errors).some((error) => typeof error === "boolean" && error)
 	) {
 		return errors;
 	}
 
-	const photoLoc = args.srcDir ? args.srcDir : args.destDir;
+	const photoLoc = srcDir ? srcDir : destDir;
 
-	const newProj = proj.newProject(
-		args.name,
-		args.srcDir,
-		args.destDir,
-		install_dir
-	);
-	proj.openProject(newProj.name);
+	const newProj = proj.newProject(name, srcDir, destDir, install_dir);
 
 	// add photo names to the project
 	fs.readdirSync(photoLoc)
 		.filter(
 			(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
 		)
-		.forEach((file) => proj.addPhoto(newProj, file));
+		.forEach((file) => photoTools.addPhoto(newProj, file));
 
+	proj.openProject(newProj.name);
 	switchToPage("projects");
 
 	await proj.generateJPGPreviews(
@@ -236,12 +211,12 @@ ipcMain.handle("create-project", async (e, args) => {
 
 	// this should happen in the background ideally
 	// do not copy files if we are creating a project from existing destination
-	if (args.srcDir) {
+	if (srcDir) {
 		await copyFiles(
-			args.srcDir,
-			args.destDir,
+			srcDir,
+			destDir,
 			fs
-				.readdirSync(args.srcDir)
+				.readdirSync(srcDir)
 				.filter(
 					(file) =>
 						path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
@@ -249,16 +224,18 @@ ipcMain.handle("create-project", async (e, args) => {
 		);
 	}
 
-	proj.generateAllXMPs(newProj);
+	photoTools.generateXMPs(newProj);
 
 	proj.setLoading(false);
-	mainWindow.webContents.send("update-projects", proj.getAllProjects());
+	mainWindow.webContents.send("update-projects", proj.getProjects());
 	return errors;
 });
 
-ipcMain.handle("get-projects", (e) => proj.getAllProjects());
+ipcMain.handle("get-projects", (e) => proj.getProjects());
 
 ipcMain.handle("select-project", (e, name) => proj.selectProject(name));
+
+ipcMain.handle("select-photo", (e, name) => proj.selectPhoto(name));
 
 ipcMain.on("uninstall_app", async (event, args) => {
 	await uninstall_app();
@@ -273,6 +250,14 @@ ipcMain.on("uninstall_app", async (event, args) => {
 	// Optionally, quit the app after all windows are closed
 	app.quit();
 });
+
+ipcMain.handle("set-rating", (e, name, rating) =>
+	photoTools.setRating(name, rating)
+);
+
+ipcMain.handle("add-tag", (e, name, tag) => photoTools.addTag(name, tag));
+
+ipcMain.handle("remove-tag", (e, name, tag) => photoTools.removeTag(name, tag));
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

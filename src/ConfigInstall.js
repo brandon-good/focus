@@ -13,11 +13,12 @@ export default function Home() {
 				<Button
 					onClick={() =>
 						window.ipcRenderer
-							.invoke("open-dialog", {
-								configInstall: true,
-								buttonLabel: "Install Here",
-								title: "Choose Installation Directory",
-							})
+							.invoke(
+								"open-dialog",
+								true,
+								"Install Here",
+								"Choose Installation Directory"
+							)
 							.then((newInstallDir) => {
 								if (newInstallDir) setInstallDir(newInstallDir);
 							})

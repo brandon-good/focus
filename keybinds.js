@@ -1,48 +1,46 @@
-const photo = require("./photo");
+const proj = require("./project");
+const photoTools = require("./photo");
 
 let lastKeyPress;
 
-function handle(event, input, page, projects) {
-	if (page !== 'projects') return;  // for now, do not record input unless on project page
-	
+function handle(e, input, photo) {
 	const keyPress = input.key.toLowerCase();
-	if (lastKeyPress !== undefined && lastKeyPress === keyPress) return;
-	
-	const currentProject = projects.filter((project) => project.selected)[0];
-	const selectedPhotos = currentProject.photos.filter((photo) => photo.selected);
-	if (selectedPhotos.length === 0) return;
-	const currentPhoto = selectedPhotos[0];
 
 	switch (keyPress) {
+		case "arrowdown":
+			proj.iterateSelectedPhoto(1);
+			break;
+		case "arrowup":
+			proj.iterateSelectedPhoto(-1);
+			break;
+		case "0":
 		case "1":
 		case "2":
 		case "3":
 		case "4":
 		case "5":
-			photo.setRating(currentPhoto, parseInt(keyPress));
+			photoTools.setRating(photo.name, parseInt(keyPress));
 			break;
 		case "6":
 		case "7":
 		case "8":
 		case "9":
 		case "0":
-			photo.addTag(currentPhoto, translateKeyToTag(keyPress));
+			photoTools.addTag(photo.name, translateKeyToTag(keyPress));
 			break;
 		case "^":
 		case "&":
 		case "*":
 		case "(":
 		case ")":
-			photo.removeTag(currentPhoto, translateKeyToTag(keyPress));
-		default: 
+			photoTools.removeTag(photo.name, translateKeyToTag(keyPress));
+		default:
 			break;
 	}
-
-	lastKeyPress = keyPress;
 }
 
 function translateKeyToTag(keyPress) {
-	switch(keyPress) {
+	switch (keyPress) {
 		case "6":
 		case "^":
 			return "red";
@@ -65,4 +63,4 @@ function translateKeyToTag(keyPress) {
 
 module.exports = {
 	handle,
-}
+};

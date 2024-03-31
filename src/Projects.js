@@ -17,19 +17,31 @@ export default function Projects() {
 	const [previewIndex, setPreviewIndex] = useState(0);
 
 	useEffect(() => {
-		window.ipcRenderer.invoke("get-projects").then((newProjects) => {
-			setProjects([...newProjects]);
-		});
-		window.ipcRenderer.on("update-projects", (newProjects) => {
-			setProjects([...newProjects]);
-		});
+		window.ipcRenderer
+			.invoke("get-projects")
+			.then((newProjects) => setProjects([...newProjects]));
+		window.ipcRenderer.on("update-projects", (newProjects) =>
+			setProjects([...newProjects])
+		);
 	}, []);
 
 	useEffect(() => {
+		if (projects.length === 0) {
+			return;
+		}
 		setProjectIndex(
 			projects
 				.filter((project) => project.open)
 				.indexOf(projects.find((project) => project.selected))
+		);
+		setPreviewIndex(
+			projects
+				.find((project) => project.selected)
+				.photos.indexOf(
+					projects
+						.find((project) => project.selected)
+						.photos.find((photo) => photo.selected)
+				)
 		);
 	}, [projects]);
 
@@ -81,8 +93,8 @@ export default function Projects() {
 				{projects[projectIndex].loading ? (
 					<div id="project-container">
 						<div id="preview-sidebar">
-							{projects[projectIndex].photoNames.map((photoName) => (
-								<div className="preview" key={photoName}>
+							{projects[projectIndex].photos.map((photo) => (
+								<div className="preview" key={photo.name}>
 									<Skeleton sx={{ height: "1rem" }} variant="rounded" />
 									<Skeleton sx={{ height: "7rem" }} variant="rounded" />
 									<div className="skeleton-rating-container">
@@ -93,15 +105,15 @@ export default function Projects() {
 										<Skeleton
 											sx={{ height: "1rem", width: "1rem" }}
 											variant="circular"
-										/>{" "}
+										/>
 										<Skeleton
 											sx={{ height: "1rem", width: "1rem" }}
 											variant="circular"
-										/>{" "}
+										/>
 										<Skeleton
 											sx={{ height: "1rem", width: "1rem" }}
 											variant="circular"
-										/>{" "}
+										/>
 										<Skeleton
 											sx={{ height: "1rem", width: "1rem" }}
 											variant="circular"
@@ -120,37 +132,40 @@ export default function Projects() {
 				) : (
 					<div id="project-container">
 						<div id="preview-sidebar">
-							{projects[projectIndex].photoNames.map((photoName, i) => (
+							{projects[projectIndex].photos.map((photo, i) => (
 								<div
 									className="preview"
-									key={photoName}
+									key={photo.name}
 									style={{
 										border: i === previewIndex ? "2px solid #89B3F7" : "none",
 									}}
 								>
-									<span>{photoName}</span>
+									<span>{photo.name}</span>
 									<img
-										alt={photoName}
-										onClick={() => setPreviewIndex(i)}
-										src={`preview://${projects[projectIndex].filepath.replace(
-											/\\/g,
-											"/"
-										)}/previews/${photoName.split(".")[0]}.jpg`}
+										alt={photo.name}
+										onClick={() =>
+											window.ipcRenderer
+												.invoke("select-photo", photo.name)
+												.then((newProjects) => setProjects([...newProjects]))
+										}
+										src={photo.previewPath}
 										style={{ cursor: "pointer" }}
 									/>
-									<Rating />
+									<Rating
+										value={photo.rating}
+										onChange={(e, rating) =>
+											window.ipcRenderer
+												.invoke("set-rating", photo.name, rating)
+												.then((newProjects) => setProjects([...newProjects]))
+										}
+									/>
 								</div>
 							))}
 						</div>
 						<div id="preview-selected">
 							<img
 								alt=""
-								src={`preview://${projects[projectIndex].filepath.replace(
-									/\\/g,
-									"/"
-								)}/previews/${
-									projects[projectIndex].photoNames[previewIndex].split(".")[0]
-								}.jpg`}
+								src={projects[projectIndex].photos[previewIndex].previewPath}
 							/>
 						</div>
 					</div>

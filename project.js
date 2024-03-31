@@ -1,5 +1,4 @@
 // In-project imports
-const { Photo } = require("./photo");
 const utils = require("./utils");
 
 // External imports
@@ -19,7 +18,6 @@ class Project {
 		this.archived = false;
 		this.open = true;
 		this.selected = true;
-		this.photoNames = []; // list of filenames of the photos
 		this.photos = [];
 		this.loading = true;
 	}
@@ -29,22 +27,7 @@ function getProject(name) {
 	return projects.find((project) => project.name === name);
 }
 
-function addPhoto(project, basename) {
-	project.photoNames.push(basename);
-
-	const xmpFileName = path.basename(basename, path.extname(basename)) + ".XMP";
-	project.photos.push(
-		new Photo(
-			basename,
-			project.srcDir ? path.join(project.srcDir, basename) : "",
-			path.join(project.destDir, basename),
-			path.join(project.filepath, utils.PREVIEW_FOLDER_NAME, basename),
-			path.join(project.destDir, xmpFileName)
-		)
-	);
-}
-
-function getAllProjects() {
+function getProjects() {
 	return projects;
 }
 
@@ -52,12 +35,44 @@ function getOpenProjects() {
 	return projects.filter((project) => project.open);
 }
 
+function getSelectedProject() {
+	return projects.find((project) => project.selected);
+}
+
+function getPhoto(name) {
+	return getSelectedProject().photos.find((photo) => name === photo.name);
+}
+
+function getSelectedPhoto() {
+	return getSelectedProject().photos.find((photo) => photo.selected);
+}
+
 function selectProject(name) {
-	projects = projects.map((project) => ({ ...project, selected: false }));
+	getSelectedProject().selected = false;
 	const project = getProject(name);
 	project.selected = true;
-	project.photos[0].selected = true;  // sets the first photo to be selected
+	const selectedPhoto = getSelectedPhoto();
+	if (selectedPhoto) {
+		selectedPhoto.selected = false;
+	}
+	project.photos[0].selected = true; // sets the first photo to be selected
 	return projects;
+}
+
+function selectPhoto(name) {
+	getSelectedPhoto().selected = false;
+	getPhoto(name).selected = true;
+	return projects;
+}
+
+function iterateSelectedPhoto(value) {
+	const selectedPhoto = getSelectedPhoto();
+	const selectedProject = getSelectedProject();
+	const i = selectedProject.photos.indexOf(selectedPhoto);
+	selectedPhoto.selected = false;
+	selectedProject.photos[
+		(i + value + selectedProject.photos.length) % selectedProject.photos.length
+	].selected = true;
 }
 
 function openProject(name) {
@@ -158,17 +173,6 @@ async function generateJPGPreviews(previewLocation, files) {
 	console.log("finished preview generation");
 }
 
-function generateAllXMPs(project) {
-	project.photos.forEach((photo) => {
-		// Skip if the XMP file already exists
-		if (fs.existsSync(photo.xmpPath)) {
-			console.log(`${photo.xmpPath} already exists. Skipping.`);
-			return;
-		}
-		photo.generateEmptyXMP();
-	});
-}
-
 function setLoading(loading) {
 	projects = projects.map((project) => ({ ...project, loading: loading }));
 	return projects;
@@ -215,17 +219,18 @@ function saveUserProjects(install_dir) {
 	});
 }
 
-const verifyNewProject = (args) => ({
-	name:
-		args.name.length === 0 ||
-		projects.some((project) => project.name === args.name),
-	nameText:
-		args.name.length === 0
-			? "Name must be at least one character"
-			: "Name already exists",
-	srcDir: args.srcDir && !fs.existsSync(args.srcDir),
-	destDir: !fs.existsSync(args.destDir),
-});
+function verifyNewProject(name, srcDir, destDir) {
+	return {
+		name:
+			name.length === 0 || projects.some((project) => project.name === name),
+		nameText:
+			name.length === 0
+				? "Name must be at least one character"
+				: "Name already exists",
+		srcDir: srcDir && !fs.existsSync(srcDir),
+		destDir: !fs.existsSync(destDir),
+	};
+}
 
 function loadProjects(install_dir) {
 	// returns a user projects object
@@ -261,16 +266,19 @@ function saveUserData(install_dir) {
 module.exports = {
 	// these are methods
 	getProject,
-	addPhoto,
-	getAllProjects,
+	getProjects,
 	getOpenProjects,
+	getSelectedProject,
+	getPhoto,
+	getSelectedPhoto,
 	selectProject,
+	selectPhoto,
+	iterateSelectedPhoto,
 	openProject,
 	closeSelectedProject,
 	closeAllProjects,
 	newProject,
 	generateJPGPreviews,
-	generateAllXMPs,
 	setLoading,
 	saveProject,
 	addProject,

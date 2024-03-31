@@ -5,6 +5,18 @@
 	padding: 0;
 }
 
+::-webkit-scrollbar {
+	width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+	background: gray;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent !important;
+}
+
 #root {
 	background-color: #202124;
 	height: 100vh;
