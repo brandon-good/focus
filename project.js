@@ -48,13 +48,17 @@ function getSelectedPhoto() {
 }
 
 function selectProject(name) {
-	getSelectedProject().selected = false;
+	const previousProject = getSelectedProject();
+	if (previousProject) 
+		previousProject.selected = false;
+
 	const project = getProject(name);
 	project.selected = true;
+
 	const selectedPhoto = getSelectedPhoto();
-	if (selectedPhoto) {
+	if (selectedPhoto) 
 		selectedPhoto.selected = false;
-	}
+
 	project.photos[0].selected = true; // sets the first photo to be selected
 	return projects;
 }
