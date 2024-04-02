@@ -6,6 +6,7 @@ const path = require("node:path");
 const fs = require("fs");
 const console = require("console");
 const extractd = require("extractd");
+const trash = require("trash");
 
 let projects = [];
 
@@ -45,6 +46,39 @@ function getPhoto(name) {
 
 function getSelectedPhoto() {
 	return getSelectedProject().photos.find((photo) => photo.selected);
+}
+
+function removePhoto(project, photoFilename) {
+	// delete the xmp, 
+	// delete the raw photo from dest dir
+	// delete the preview
+	console.log('deleting photo ' + photoFilename + ' from project ' + project.name);
+	console.log('0 name ' + project.photos[0].name)
+	const photo = project.photos.find((p) => p.name === photoFilename)
+	const photoIndex = project.photos.indexOf(photo);
+
+	if (photoIndex === -1) {
+		throw Error("photo " + photoFilename + " does not exist.")
+	}
+	if (photoIndex > -1) {
+		project.photos.splice(photoIndex, 1);
+	}
+
+	console.log(photo.destPath)
+	let pathToPreview = photo.previewPath.split('preview://')[1]
+	console.log(pathToPreview)
+	console.log(photo.xmpPath)
+	try {
+		(async () => {
+			await trash([photo.destPath, pathToPreview, photo.xmpPath]);
+		})();
+	}
+	catch (error) {
+		console.log(error)
+		console.log('failed to fully delete photo.')
+	} finally {
+		return projects;
+	}
 }
 
 function selectProject(name) {
@@ -275,6 +309,7 @@ module.exports = {
 	getOpenProjects,
 	getSelectedProject,
 	getPhoto,
+	removePhoto,
 	getSelectedPhoto,
 	selectProject,
 	selectPhoto,

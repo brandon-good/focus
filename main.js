@@ -260,6 +260,11 @@ ipcMain.handle("add-tag", (e, name, tag) => photoTools.addTag(name, tag));
 
 ipcMain.handle("remove-tag", (e, name, tag) => photoTools.removeTag(name, tag));
 
+ipcMain.handle('delete-photo', (e, photoFilename) => {
+	let project = proj.getSelectedProject();
+	proj.removePhoto(project, photoFilename);
+})
+
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
