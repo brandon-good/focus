@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Preview from "./Preview";
 import "./Projects.css";
 import CloseIcon from "@mui/icons-material/Close";
 import HomeIcon from "@mui/icons-material/Home";
@@ -6,7 +7,6 @@ import NewProjectMenu from "./NewProjectMenu";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import Button from "@mui/material/Button";
 import LinearProgress from "@mui/material/LinearProgress";
-import Rating from "@mui/material/Rating";
 import Skeleton from "@mui/material/Skeleton";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
@@ -132,34 +132,8 @@ export default function Projects() {
 				) : (
 					<div id="project-container">
 						<div id="preview-sidebar">
-							{projects[projectIndex].photos.map((photo, i) => (
-								<div
-									className="preview"
-									key={photo.name}
-									style={{
-										border: i === previewIndex ? "2px solid #89B3F7" : "none",
-									}}
-								>
-									<span>{photo.name}</span>
-									<img
-										alt={photo.name}
-										onClick={() =>
-											window.ipcRenderer
-												.invoke("select-photo", photo.name)
-												.then((newProjects) => setProjects([...newProjects]))
-										}
-										src={photo.previewPath}
-										style={{ cursor: "pointer" }}
-									/>
-									<Rating
-										value={photo.rating}
-										onChange={(e, rating) =>
-											window.ipcRenderer
-												.invoke("set-rating", photo.name, rating)
-												.then((newProjects) => setProjects([...newProjects]))
-										}
-									/>
-								</div>
+							{projects[projectIndex].photos.map((photo) => (
+								<Preview photo={photo} setProjects={setProjects} />
 							))}
 						</div>
 						<div id="preview-selected">

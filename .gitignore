@@ -1,3 +1,5 @@
+example_photos/**/*.XMP
+
 # Logs
 logs
 *.log
