@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import Preview from "./Preview";
 import "./Projects.css";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
 import HomeIcon from "@mui/icons-material/Home";
 import NewProjectMenu from "./NewProjectMenu";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 import LinearProgress from "@mui/material/LinearProgress";
 import Skeleton from "@mui/material/Skeleton";
 import Tab from "@mui/material/Tab";
@@ -13,8 +15,10 @@ import Tabs from "@mui/material/Tabs";
 
 export default function Projects() {
 	const [projects, setProjects] = useState([]);
+	const [tabIndex, setTabIndex] = useState(-1);
 	const [projectIndex, setProjectIndex] = useState(-1);
 	const [previewIndex, setPreviewIndex] = useState(0);
+	const [expanded, setExpanded] = useState(false);
 
 	useEffect(() => {
 		window.ipcRenderer
@@ -29,10 +33,13 @@ export default function Projects() {
 		if (projects.length === 0) {
 			return;
 		}
-		setProjectIndex(
+		setTabIndex(
 			projects
 				.filter((project) => project.open)
 				.indexOf(projects.find((project) => project.selected))
+		);
+		setProjectIndex(
+			projects.indexOf(projects.find((project) => project.selected))
 		);
 		setPreviewIndex(
 			projects
@@ -50,21 +57,22 @@ export default function Projects() {
 			<div id="projects-container">
 				<header>
 					<div>
-						<HomeIcon
-							fontSize="small"
+						<IconButton
 							onClick={() =>
 								(window.location.href = "http://localhost:3000/home")
 							}
+							size="small"
 							sx={{ color: "white", cursor: "pointer" }}
-						/>
+						>
+							<HomeIcon fontSize="small" />
+						</IconButton>
 						<Tabs
-							value={projectIndex}
-							onChange={(e, newProjectIndex) =>
+							value={tabIndex}
+							onChange={(e, newTabIndex) =>
 								window.ipcRenderer
 									.invoke(
 										"select-project",
-										projects.filter((project) => project.open)[newProjectIndex]
-											.name
+										projects.filter((project) => project.open)[newTabIndex].name
 									)
 									.then((newProjects) => setProjects([...newProjects]))
 							}
@@ -75,15 +83,17 @@ export default function Projects() {
 									<Tab label={project.name} key={project.name} />
 								))}
 						</Tabs>
-						<CloseIcon
-							fontSize="small"
+						<IconButton
 							onClick={() =>
 								window.ipcRenderer
 									.invoke("close-selected-project")
 									.then((newProjects) => setProjects([...newProjects]))
 							}
+							size="small"
 							sx={{ color: "white", cursor: "pointer" }}
-						/>
+						>
+							<CloseIcon fontSize="small" />
+						</IconButton>
 						<NewProjectMenu projects={projects} setProjects={setProjects} />
 					</div>
 					<Button variant="contained" endIcon={<OpenInNewIcon />}>
@@ -92,7 +102,7 @@ export default function Projects() {
 				</header>
 				{projects[projectIndex].loading ? (
 					<div id="project-container">
-						<div id="preview-sidebar">
+						<div id="preview-sidebar" style={{ width: "15rem" }}>
 							{projects[projectIndex].photos.map((photo) => (
 								<div className="preview" key={photo.name}>
 									<Skeleton sx={{ height: "1rem" }} variant="rounded" />
@@ -131,12 +141,29 @@ export default function Projects() {
 					</div>
 				) : (
 					<div id="project-container">
-						<div id="preview-sidebar">
+						<div
+							id="preview-sidebar"
+							style={{ width: expanded ? "300%" : "15rem" }}
+						>
 							{projects[projectIndex].photos.map((photo) => (
-								<Preview photo={photo} setProjects={setProjects} />
+								<Preview
+									expanded={expanded}
+									key={photo.name}
+									photo={photo}
+									setProjects={setProjects}
+								/>
 							))}
 						</div>
 						<div id="preview-selected">
+							<IconButton onClick={() => setExpanded(!expanded)} size="large">
+								<ChevronRightIcon
+									fontSize="large"
+									sx={{
+										transition: "1s",
+										transform: `rotate(${expanded ? "180" : "0"}deg)`,
+									}}
+								/>
+							</IconButton>
 							<img
 								alt=""
 								src={projects[projectIndex].photos[previewIndex].previewPath}

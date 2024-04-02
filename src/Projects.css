@@ -1,23 +1,35 @@
 .skeleton-rating-container {
 	display: flex;
 	justify-content: space-around;
+	width: 100%;
 }
 
 #preview-sidebar {
+	align-items: center;
 	background: rgba(255, 255, 255, 0.025);
 	display: flex;
-	flex-direction: column;
+	flex-wrap: wrap;
 	gap: 1rem;
 	overflow-y: scroll;
 	padding: 1rem;
-	width: 15rem;
+	transition: 1s;
 }
 
 #preview-selected {
 	align-items: center;
 	display: flex;
 	justify-content: center;
+	position: relative;
 	width: 100%;
+}
+
+#preview-selected .MuiIconButton-root {
+	background: rgba(255, 255, 255, 0.025);
+	border-bottom-left-radius: 0;
+	border-top-left-radius: 0;
+	bottom: 0;
+	left: 0;
+	position: absolute;
 }
 
 #preview-selected div {
@@ -27,8 +39,8 @@
 }
 
 #preview-selected img {
-	max-height: calc(100vh - 4rem);
-	max-width: calc(100vw - 15rem);
+	max-height: 100%;
+	max-width: 100%;
 	object-fit: contain;
 	padding: 1rem;
 }

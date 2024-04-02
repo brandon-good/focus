@@ -25,11 +25,9 @@ const install_dir_filename = "install_directory.txt";
 let install_dir = path.join(app.getPath("home"), "Focus");
 
 let mainWindow;
-let currentPage;
 
 function switchToPage(page) {
 	mainWindow.loadURL(`http://localhost:3000/${page}`);
-	currentPage = page;
 }
 
 function createWindow() {
@@ -55,7 +53,10 @@ function createWindow() {
 		});
 		mainWindow.setMenuBarVisibility(false);
 		mainWindow.webContents.on("before-input-event", (e, input) => {
-			if (input.type === "keyDown" && currentPage === "projects") {
+			if (
+				input.type === "keyDown" &&
+				mainWindow.getURL().includes("projects")
+			) {
 				keybinds.handle(e, input, proj.getSelectedPhoto());
 				mainWindow.webContents.send("update-projects", proj.getProjects());
 			}
@@ -237,7 +238,7 @@ ipcMain.handle("select-project", (e, name) => proj.selectProject(name));
 
 ipcMain.handle("select-photo", (e, name) => proj.selectPhoto(name));
 
-ipcMain.on("uninstall_app", async (event, args) => {
+ipcMain.on("uninstall_app", async (e, args) => {
 	await uninstall_app();
 	// Retrieve all open windows
 	const allWindows = BrowserWindow.getAllWindows();

@@ -3,17 +3,17 @@ import "./Preview.css";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Rating from "@mui/material/Rating";
 
-export default function Preview({ photo, setProjects }) {
+export default function Preview({ expanded, photo, setProjects }) {
 	const [isHover, setIsHover] = useState(false);
 
 	return (
 		<div
 			className="preview"
-			key={photo.name}
 			onMouseEnter={() => setIsHover(true)}
 			onMouseLeave={() => setIsHover(false)}
 			style={{
 				border: photo.selected ? "2px solid #89B3F7" : "none",
+				width: expanded ? "15rem" : "100%rem",
 			}}
 		>
 			<span>{photo.name}</span>
