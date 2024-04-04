@@ -1,5 +1,6 @@
 // In-project imports
 const utils = require("./utils");
+const pho = require("./photo.js")
 
 // External imports
 const path = require("node:path");
@@ -364,13 +365,10 @@ function saveUserData(install_dir) {
 	projects.forEach((project) => saveProject(project));
 }
 
-function filter(projName, minRating, maxRating, tags) {
-	const project = getProject(projName);
+function filter(name, minRating, maxRating, tags) {
+	const project = getProject(name);
 	project.photos.forEach((photo) => {
-		setFilterAttr(photo, minRating, maxRating, tags)
-		console.log("Photo: " + photo.name);
-		console.log("Rating: " + photo.rating);
-		console.log("Filter? " + photo.inFilter);
+		pho.setFilterAttr(photo, minRating, maxRating, tags)
 	})
 	return projects;
 }
@@ -463,9 +461,17 @@ module.exports = {
 	verifyNewProject,
 	loadProjects,
 	saveUserData,
+	archiveSelectedProject,
+	deleteSelectedProject,
+	archiveProject,
+	unArchiveProject,
+	deleteProject,
 	filter,
-	setFilterAttr,
-	removeFilters,
-	exportProject,
-	exportPhoto
+
+	// the below are unused in main as of right now, might be able to delete?
+	saveUserProjects,
+	newUserProjects,
+	projectFromJson,
+	createProjectDir,
+	userProjectsFromJson,
 };
