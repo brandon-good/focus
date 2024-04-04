@@ -17,6 +17,7 @@ class Photo {
 		this.rating = 0;
 		this.tags = [];
 		this.selected = false;
+		this.inFilter = false;
 	}
 }
 
@@ -154,6 +155,16 @@ function toggleTag(photo, tag) {
 	}
 }
 
+function setFilterAttr(photo, minRating, maxRating, tags) {
+	const xmpInfo = readXMP(photo);
+	if (minRating <= xmpInfo && xmpInfo <= maxRating          // rating matches query
+		&& tags.every(tag => xmpInfo.tags.includes(tag))) {   // tags match query
+		this.inFilter = true;
+	} else {
+		this.inFitler = false;  // shouldn't be necessary but just to make sure
+	}
+}
+
 module.exports = {
 	Photo,
 	addPhoto,
@@ -162,4 +173,5 @@ module.exports = {
 	addTag,
 	removeTag,
 	toggleTag,
+	setFilterAttr
 };
