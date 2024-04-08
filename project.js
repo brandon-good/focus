@@ -205,7 +205,11 @@ async function generatePreviewsFromDest(name) {
 	await generateJPGPreviews(
 		path.join(project.filepath, utils.PREVIEW_FOLDER_NAME),
 		fs
+<<<<<<< HEAD
 			.readdirSync(project.destDir)
+=======
+			.readdirSync(project.destDir)
+>>>>>>> bbc83df (loads previews before copying)
 			.filter(
 				(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
 			)
