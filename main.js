@@ -170,6 +170,8 @@ ipcMain.handle("archive-project", (e, name) => {
 
 ipcMain.handle("unarchive-project", async (e, name) => {
 	await proj.unArchiveProject(proj.getProject(name));
+	switchtopage("projects");
+	return proj.openproject(name);
 });
 
 ipcMain.handle("delete-project", (e, name) => {
@@ -187,28 +189,37 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	}
 
 	const photoLoc = srcDir ? srcDir : destDir;
-
 	const newProj = proj.newProject(name, srcDir, destDir, install_dir);
 
-	// add photo names to the project
-	fs.readdirSync(photoLoc)
-		.filter(
-			(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
-		)
-		.forEach((file) => photoTools.addPhoto(newProj, file));
+	// below we are looping over the photo directory multiple times
+	// coalesce these into 1 for loop that does the following
+	//		adds photo to list of photos in project
+	//		generates JPG preview
+	//		updates front end with new information
 
+	const photoFiles = 
+			fs.readdirSync(photoLoc)
+				.filter(
+					(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
+				);
+
+	for (const file of photoFiles) {
+		photoTools.addPhoto(newProj, file);	
+	}
+
+	// must occur after creating photo objects to set the selected photo
 	proj.openProject(newProj.name);
 	switchToPage("projects");
 
 	await proj.generateJPGPreviews(
 		path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
-		fs
-			.readdirSync(photoLoc)
-			.filter(
-				(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
-			)
-			.map((file) => path.join(photoLoc, file))
+		photoFiles.map((file) => path.join(photoLoc, file))
 	);
+
+	proj.setLoading(false);
+	mainWindow.webContents.send("update-projects", proj.getProjects());
+
+	console.log("finished generating");
 
 	// this should happen in the background ideally
 	// do not copy files if we are creating a project from existing destination
@@ -224,11 +235,12 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 				)
 		);
 	}
-
 	photoTools.generateXMPs(newProj);
+	console.log("finished copying");
 
-	proj.setLoading(false);
-	mainWindow.webContents.send("update-projects", proj.getProjects());
+	newProj.copying = false;
+	mainWindow.webContents.send("update-projects", proj.getProjects());  // this is to mark the copies icon as finished
+	// need to save all updates in the current project to the XMP
 	return errors;
 });
 
