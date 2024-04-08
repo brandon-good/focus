@@ -20,6 +20,7 @@ class Project {
 		this.selected = true;
 		this.photos = [];
 		this.loading = true;
+		this.copying = true;
 	}
 }
 
@@ -55,6 +56,8 @@ function selectProject(name) {
 
 	const project = getProject(name);
 	project.selected = true;
+	console.log("project photos:");
+	console.log(project.photos);
 
 	const selectedPhoto = getSelectedPhoto();
 	if (!selectedPhoto) {
@@ -128,18 +131,23 @@ function archiveProject(name) {
 }
 
 async function unArchiveProject(name) {
+	generatePreviewsFromDest(name);
+	const project = getProject(name);
+	project.archived = false;
+	return openProject(name);
+}
+
+async function generatePreviewsFromDest(name) {
 	const project = getProject(name);
 	await generateJPGPreviews(
 		path.join(project.filepath, utils.PREVIEW_FOLDER_NAME),
 		fs
-			.readdirSync(project.destDir) // TODO newProj and args are undefined (bennett!)
+			.readdirSync(project.destDir) 
 			.filter(
 				(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
 			)
 			.map((file) => path.join(project.destDir, file))
 	);
-	project.archived = false;
-	project.open = false;
 }
 
 function deleteProject(name) {
@@ -164,9 +172,6 @@ async function generateJPGPreviews(previewLocation, files) {
 	// it is possible that we have to recreate the thumbnails based on the destination copied files
 	// DO NOT OVERWRITE EXISTING FILES
 
-	console.log("begin preview generation");
-	console.log(previewLocation);
-	console.log(files);
 	await (async () => {
 		const done = await extractd.generate(files, {
 			destination: previewLocation,
@@ -174,8 +179,6 @@ async function generateJPGPreviews(previewLocation, files) {
 		});
 		console.dir(done);
 	})();
-
-	console.log("finished preview generation");
 }
 
 function setLoading(loading) {
