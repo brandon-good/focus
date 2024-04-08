@@ -197,15 +197,20 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	//		generates JPG preview
 	//		updates front end with new information
 
+	const startRead = new Date();
 	const photoFiles = 
 			fs.readdirSync(photoLoc)
 				.filter(
 					(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
 				);
+	const endRead = new Date();
+	const readDiff = (endRead - startRead);
 
 	for (const file of photoFiles) {
 		photoTools.addPhoto(newProj, file);	
 	}
+	const endPhotoAdd = new Date();
+	const photoAddDiff = (endPhotoAdd - endRead);
 
 	// must occur after creating photo objects to set the selected photo
 	proj.openProject(newProj.name);
@@ -219,7 +224,8 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	proj.setLoading(false);
 	mainWindow.webContents.send("update-projects", proj.getProjects());
 
-	console.log("finished generating");
+	const endPreviewGen = new Date();
+	const previewGenDiff = (endPreviewGen - endPhotoAdd);
 
 	// this should happen in the background ideally
 	// do not copy files if we are creating a project from existing destination
@@ -236,11 +242,19 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 		);
 	}
 	photoTools.generateXMPs(newProj);
-	console.log("finished copying");
+	const endCopy = new Date();
+	const copyDiff = (endCopy - endPreviewGen);
+
 
 	newProj.copying = false;
 	mainWindow.webContents.send("update-projects", proj.getProjects());  // this is to mark the copies icon as finished
 	// need to save all updates in the current project to the XMP
+	
+	console.log("reading took:       " + Math.round(readDiff) + " ms");
+	console.log("photo add took:     " + Math.round(photoAddDiff) + " ms");
+	console.log("preview gen took:   " + Math.round(previewGenDiff) + " ms");
+	console.log("copying took:       " + Math.round(copyDiff) + " ms");
+
 	return errors;
 });
 
