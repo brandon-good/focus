@@ -215,16 +215,16 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	//		updates front end with new information
 
 	const startRead = new Date();
-	const photoFiles = 
-			fs.readdirSync(photoLoc)
-				.filter(
-					(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
-				);
+	const photoFiles =
+		fs.readdirSync(photoLoc)
+			.filter(
+				(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
+			);
 	const endRead = new Date();
 	const readDiff = (endRead - startRead);
 
 	for (const file of photoFiles) {
-		photoTools.addPhoto(newProj, file);	
+		photoTools.addPhoto(newProj, file);
 	}
 
 	const endPhotoAdd = new Date();
@@ -235,7 +235,7 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	switchToPage("projects");
 
 	proj.setLoading(false);  // SEAN REMOVE THIS ONE
-	
+
 	for (let i = 0; i < newProj.photos.length; i++) {
 		const file = photoFiles[i];
 		const photoObj = newProj.photos[i];
@@ -251,7 +251,7 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 
 		await proj.generateJPGPreviews(
 			path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
-			[ path.join(destDir, file) ]
+			[path.join(destDir, file)]
 		);
 		utils.generateEmptyXMP(photoObj);
 
@@ -260,12 +260,37 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	}
 
 	proj.setLoading(false);
-	mainWindow.webContents.send("update-projects", proj.getProjects());  // this is to mark the copies icon as finished
+	mainWindow.webContents.send("update-projects", proj.getProjects()); // this is to mark the copies icon as finished
+
+	const endPreviewGen = new Date();
+	const previewGenDiff = (endPreviewGen - endPhotoAdd);
+
+	// this should happen in the background ideally
+	// do not copy files if we are creating a project from existing destination
+	if (srcDir) {
+		await copyFiles(
+			srcDir,
+			destDir,
+			fs
+				.readdirSync(srcDir)
+				.filter(
+					(file) =>
+						path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
+				)
+		);
+	}
+	photoTools.generateXMPs(newProj);
 	const endCopy = new Date();
-	const copyDiff = (endCopy - endPhotoAdd);
-	
+	const copyDiff = (endCopy - endPreviewGen);
+
+
+	newProj.copying = false;
+	mainWindow.webContents.send("update-projects", proj.getProjects());  // this is to mark the copies icon as finished
+	// need to save all updates in the current project to the XMP
+
 	console.log("reading took:       " + Math.round(readDiff) + " ms");
 	console.log("photo add took:     " + Math.round(photoAddDiff) + " ms");
+	console.log("preview gen took:   " + Math.round(previewGenDiff) + " ms");
 	console.log("copying took:       " + Math.round(copyDiff) + " ms");
 
 	return errors;
