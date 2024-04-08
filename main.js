@@ -176,7 +176,11 @@ ipcMain.on("open-project", async (e, name) => {
 
 ipcMain.handle("close-selected-project", () => proj.closeSelectedProject());
 
-ipcMain.handle("archive-selected-project", () => proj.archiveSelectedProject());
+ipcMain.handle("unarchive-project", async (e, name) => {
+	await proj.unArchiveProject(proj.getProject(name));
+	switchtopage("projects");
+	return proj.openproject(name);
+});
 
 ipcMain.handle(
 	"unarchive-project",
@@ -206,55 +210,54 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	//		generates JPG preview
 	//		updates front end with new information
 
-	const startRead = new Date();
-	const photoFiles = fs
-		.readdirSync(photoLoc)
-		.filter(
-			(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
-		);
-	const endRead = new Date();
-	const readDiff = endRead - startRead;
+	const photoFiles =
+		fs.readdirSync(photoLoc)
+			.filter(
+				(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
+			);
 
 	for (const file of photoFiles) {
 		photoTools.addPhoto(newProj, file);
 	}
 
-	const endPhotoAdd = new Date();
-	const photoAddDiff = endPhotoAdd - endRead;
-
 	// must occur after creating photo objects to set the selected photo
 	proj.openProject(newProj.name);
 	switchToPage("projects");
 
-	for (let i = 0; i < newProj.photos.length; i++) {
-		const file = photoFiles[i];
-		const photo = newProj.photos[i];
+	await proj.generateJPGPreviews(
+		path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
+		photoFiles.map((file) => path.join(photoLoc, file))
+	);
 
-		// do not copy files if we are creating a project from existing destination
-		if (srcDir) {
-			await copyFiles(srcDir, destDir, [file]);
-		}
+	proj.setLoading(false);
+	mainWindow.webContents.send("update-projects", proj.getProjects());
 
-		await proj.generateJPGPreviews(
-			path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
-			[path.join(destDir, file)]
+	console.log("finished generating");
+
+	// this should happen in the background ideally
+	// do not copy files if we are creating a project from existing destination
+	if (srcDir) {
+		await copyFiles(
+			srcDir,
+			destDir,
+			fs
+				.readdirSync(srcDir)
+				.filter(
+					(file) =>
+						path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
+				)
 		);
 		photoTools.generateEmptyXMP(photo);
 
 		photo.loading = false;
 		mainWindow.webContents.send("update-projects", proj.getProjects());
 	}
+	photoTools.generateXMPs(newProj);
+	console.log("finished copying");
 
-	proj.setLoading(false);
-	mainWindow.webContents.send("update-projects", proj.getProjects()); // this is to mark the copies icon as finished
-
-	const endCopy = new Date();
-	const copyDiff = endCopy - endPhotoAdd;
-
-	console.log("reading took:       " + Math.round(readDiff) + " ms");
-	console.log("photo add took:     " + Math.round(photoAddDiff) + " ms");
-	console.log("copying took:       " + Math.round(copyDiff) + " ms");
-
+	newProj.copying = false;
+	mainWindow.webContents.send("update-projects", proj.getProjects());  // this is to mark the copies icon as finished
+	// need to save all updates in the current project to the XMP
 	return errors;
 });
 
