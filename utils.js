@@ -150,6 +150,7 @@ function rmdir(dir) {
 module.exports = {
 	readXMPFile,
 	readXMP,
+	generateXMP,
 	writeXMPFile,
 	resetXMPs,
 	generateXMPs,

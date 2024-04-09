@@ -1,6 +1,5 @@
 // In-project imports
 const utils = require("./utils");
-const pho = require("./photo.js")
 
 // External imports
 const path = require("node:path");
@@ -365,10 +364,13 @@ function saveUserData(install_dir) {
 	projects.forEach((project) => saveProject(project));
 }
 
-function filter(name, minRating, maxRating, tags) {
-	const project = getProject(name);
+function filter(projName, minRating, maxRating, tags) {
+	const project = getProject(projName);
 	project.photos.forEach((photo) => {
-		pho.setFilterAttr(photo, minRating, maxRating, tags)
+		setFilterAttr(photo, minRating, maxRating, tags)
+		console.log("Photo: " + photo.name);
+		console.log("Rating: " + photo.rating);
+		console.log("Filter? " + photo.inFilter);
 	})
 	return projects;
 }

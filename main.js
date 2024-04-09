@@ -279,7 +279,6 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 				)
 		);
 	}
-	photoTools.generateXMPs(newProj);
 	const endCopy = new Date();
 	const copyDiff = (endCopy - endPreviewGen);
 
@@ -292,6 +291,8 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	console.log("photo add took:     " + Math.round(photoAddDiff) + " ms");
 	console.log("preview gen took:   " + Math.round(previewGenDiff) + " ms");
 	console.log("copying took:       " + Math.round(copyDiff) + " ms");
+
+	utils.generateXMPs(newProj);
 
 	return errors;
 });
