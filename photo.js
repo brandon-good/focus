@@ -17,6 +17,7 @@ class Photo {
 		this.rating = 0;
 		this.tags = [];
 		this.selected = false;
+		this.loaded = false;
 	}
 }
 

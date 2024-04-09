@@ -209,6 +209,7 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	for (const file of photoFiles) {
 		photoTools.addPhoto(newProj, file);	
 	}
+
 	const endPhotoAdd = new Date();
 	const photoAddDiff = (endPhotoAdd - endRead);
 
@@ -216,8 +217,12 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	proj.openProject(newProj.name);
 	switchToPage("projects");
 
-	proj.setLoading(false);
-	for (const file of photoFiles) {
+	proj.setLoading(false);  // SEAN REMOVE THIS ONE
+	
+	for (let i = 0; i < newProj.photos.length; i++) {
+		const file = photoFiles[i];
+		const photoObj = newProj.photos[i];
+
 		// do not copy files if we are creating a project from existing destination
 		if (srcDir) {
 			await copyFiles(
@@ -232,18 +237,15 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 			[ path.join(destDir, file) ]
 		);
 
-		// is this needed? probably
+		photoObj.loaded = true;
 		mainWindow.webContents.send("update-projects", proj.getProjects());
 	}
 
 	photoTools.generateXMPs(newProj);
+	proje.setLoading(false);
+	mainWindow.webContents.send("update-projects", proj.getProjects());  // this is to mark the copies icon as finished
 	const endCopy = new Date();
 	const copyDiff = (endCopy - endPhotoAdd);
-
-
-	newProj.copying = false;
-	mainWindow.webContents.send("update-projects", proj.getProjects());  // this is to mark the copies icon as finished
-	// need to save all updates in the current project to the XMP
 	
 	console.log("reading took:       " + Math.round(readDiff) + " ms");
 	console.log("photo add took:     " + Math.round(photoAddDiff) + " ms");
