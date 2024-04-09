@@ -62,7 +62,7 @@ function generateEmptyXMP(photo) {
 	// Skip if the XMP file already exists
 	if (fs.existsSync(photo.xmpPath)) {
 		console.log(`${photo.xmpPath} already exists. Skipping.`);
-		continue;
+		return;
 	}
 
 	generateXMP(photo, { rating: 0, tags: [] });
@@ -178,4 +178,5 @@ module.exports = {
 	addTag,
 	removeTag,
 	toggleTag,
+	generateEmptyXMP,
 };
