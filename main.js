@@ -209,23 +209,13 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	for (const file of photoFiles) {
 		photoTools.addPhoto(newProj, file);	
 	}
-	const endPhotoAdd = new Date();
-	const photoAddDiff = (endPhotoAdd - endRead);
 
 	// must occur after creating photo objects to set the selected photo
 	proj.openProject(newProj.name);
 	switchToPage("projects");
 
-	await proj.generateJPGPreviews(
-		path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
-		photoFiles.map((file) => path.join(photoLoc, file))
-	);
-
-	proj.setLoading(false);
-	mainWindow.webContents.send("update-projects", proj.getProjects());
-
-	const endPreviewGen = new Date();
-	const previewGenDiff = (endPreviewGen - endPhotoAdd);
+	const endPhotoAdd = new Date();
+	const photoAddDiff = (endPhotoAdd - endRead);
 
 	// this should happen in the background ideally
 	// do not copy files if we are creating a project from existing destination
@@ -242,18 +232,28 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 		);
 	}
 	photoTools.generateXMPs(newProj);
-	const endCopy = new Date();
-	const copyDiff = (endCopy - endPreviewGen);
-
-
 	newProj.copying = false;
-	mainWindow.webContents.send("update-projects", proj.getProjects());  // this is to mark the copies icon as finished
+
+	const endCopy = new Date();
+	const copyDiff = (endCopy - endPhotoAdd);
+
+	await proj.generateJPGPreviews(
+		path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
+		photoFiles.map((file) => path.join(destDir, file))
+	);
+
+	proj.setLoading(false);
+	mainWindow.webContents.send("update-projects", proj.getProjects());
+
+	const endPreviewGen = new Date();
+	const previewGenDiff = (endPreviewGen - endCopy);
+
 	// need to save all updates in the current project to the XMP
 	
 	console.log("reading took:       " + Math.round(readDiff) + " ms");
 	console.log("photo add took:     " + Math.round(photoAddDiff) + " ms");
-	console.log("preview gen took:   " + Math.round(previewGenDiff) + " ms");
 	console.log("copying took:       " + Math.round(copyDiff) + " ms");
+	console.log("preview gen took:   " + Math.round(previewGenDiff) + " ms");
 
 	return errors;
 });
