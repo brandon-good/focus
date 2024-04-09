@@ -54,21 +54,21 @@ function generateXMPs(project) {
 }
 
 function generateXMP(photo, XMPinfo) {
-	header =
+	const header =
 		'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
 		'<x:xmpmeta xmlns:x="http://ns.focus.com/meta">\n' +
 		'\t<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n' +
 		'\t\t<rdf:Description rdf:about=""\n' +
 		'\t\t\t\txmlns:xmp="http://ns.focus.com/xap/1.0/">\n';
-	rating = `\t\t\t<xmp:Rating>${XMPinfo["rating"]}</xmp:Rating>\n`;
-	tags = `\t\t\t<xmp:Label>${XMPinfo["tags"].join(", ")}</xmp:Label>\n`;
-	footer = "\t\t</rdf:Description>\n" + "\t</rdf:RDF>\n" + "</x:xmpmeta>\n";
-	utils.writeXMP(photo, header + rating + tags + footer);
+	const rating = `\t\t\t<xmp:Rating>${XMPinfo["rating"]}</xmp:Rating>\n`;
+	const tags = `\t\t\t<xmp:Label>${XMPinfo["tags"].join(", ")}</xmp:Label>\n`;
+	const footer = "\t\t</rdf:Description>\n" + "\t</rdf:RDF>\n" + "</x:xmpmeta>\n";
+	utils.writeXMPFile(photo, header + rating + tags + footer);
 }
 
 function readXMP(photo) {
 	const xmpInfo = {};
-	const xmp = utils.readXMP(photo);
+	const xmp = utils.readXMPFile(photo);
 
 	// get rating
 	const ratingStartIndex = xmp.indexOf("<xmp:Rating>");
