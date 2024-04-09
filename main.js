@@ -229,7 +229,7 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 		);
 	}
 
-	photoTools.generateXMPs(newProj);
+	utils.generateXMPs(newProj);
 
 	proj.setLoading(false);
 	mainWindow.webContents.send("update-projects", proj.getProjects());

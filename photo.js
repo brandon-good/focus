@@ -3,8 +3,6 @@ const proj = require("./project");
 const utils = require("./utils");
 
 // External imports
-const fs = require("fs");
-const console = require("console");
 const path = require("node:path");
 
 class Photo {
@@ -42,67 +40,8 @@ function addPhoto(project, name) {
 	);
 }
 
-function generateXMPs(project) {
-	for (const photo of project.photos) {
-		// Skip if the XMP file already exists
-		if (fs.existsSync(photo.xmpPath)) {
-			console.log(`${photo.xmpPath} already exists. Skipping.`);
-			continue;
-		}
-		generateXMP(photo, { rating: 0, tags: [] });
-	}
-}
-
-function generateXMP(photo, XMPinfo) {
-	const header =
-		'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-		'<x:xmpmeta xmlns:x="http://ns.focus.com/meta">\n' +
-		'\t<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n' +
-		'\t\t<rdf:Description rdf:about=""\n' +
-		'\t\t\t\txmlns:xmp="http://ns.focus.com/xap/1.0/">\n';
-	const rating = `\t\t\t<xmp:Rating>${XMPinfo["rating"]}</xmp:Rating>\n`;
-	const tags = `\t\t\t<xmp:Label>${XMPinfo["tags"].join(", ")}</xmp:Label>\n`;
-	const footer = "\t\t</rdf:Description>\n" + "\t</rdf:RDF>\n" + "</x:xmpmeta>\n";
-	utils.writeXMPFile(photo, header + rating + tags + footer);
-}
-
-function readXMP(photo) {
-	const xmpInfo = {};
-	const xmp = utils.readXMPFile(photo);
-
-	// get rating
-	const ratingStartIndex = xmp.indexOf("<xmp:Rating>");
-	const ratingEndIndex = xmp.indexOf("</xmp:Rating>");
-	if (ratingStartIndex === -1) {
-		console.log("no rating tag found! must be 0.");
-		xmpInfo.rating = 0;
-	} else {
-		const ratingStr = xmp.substring(
-			ratingStartIndex + "<xmp:Rating>".length,
-			ratingEndIndex
-		);
-		console.log("rating = " + ratingStr);
-		try {
-			xmpInfo.rating = parseInt(ratingStr);
-		} catch (exc) {
-			console.log(
-				"ERROR parsing rating from xmp" + photo.xmpPath + exc.toString()
-			);
-		}
-	}
-
-	// get tags
-	const tagsStartIndex = xmp.indexOf("<xmp:Label>");
-	const tagsEndIndex = xmp.indexOf("</xmp:Label>");
-	if (tagsStartIndex === -1) {
-		xmpInfo.tags = [];
-	} else {
-		const tagsList = xmp
-			.substring(tagsStartIndex + "<xmp:Label>".length, tagsEndIndex)
-			.split(", ");
-		xmpInfo.tags = tagsList;
-		console.log("tags include " + tagsList.toString());
-	}
+function readXMPUpdateAttrs(photo) {
+	const xmpInfo = utils.readXMP(photo);
 
 	// update photo obj with xmp info
 	photo.rating = xmpInfo.rating;
@@ -116,28 +55,28 @@ function setRating(name, rating) {
 	if (!(rating >= 0 && rating <= 5)) {
 		throw Error("rating must be between 0 and 5.");
 	}
-	const xmpInfo = readXMP(photo);
+	const xmpInfo = readXMPUpdateAttrs(photo);
 	photo.rating = rating;
 	xmpInfo.rating = rating;
-	generateXMP(photo, xmpInfo);
+	utils.generateXMP(photo, xmpInfo);
 	return proj.getProjects();
 }
 
 function addTag(name, tag) {
 	const photo = proj.getPhoto(name);
-	const xmpInfo = readXMP(photo);
+	const xmpInfo = readXMPUpdateAttrs(photo);
 	photo.tags.push(tag);
 	xmpInfo.tags.push(tag);
-	generateXMP(photo, xmpInfo);
+	utils.generateXMP(photo, xmpInfo);
 	return proj.getProjects();
 }
 
 function removeTag(name, tag) {
 	const photo = proj.getPhoto(name);
-	const xmpInfo = readXMP(photo);
+	const xmpInfo = readXMPUpdateAttrs(photo);
 	photo.tags = photo.tags.filter((item) => item !== tag);
 	xmpInfo.tags = xmpInfo.tags.filter((item) => item !== tag);
-	generateXMP(photo, xmpInfo);
+	utils.generateXMP(photo, xmpInfo);
 	return proj.getProjects();
 }
 
@@ -155,23 +94,12 @@ function toggleTag(photo, tag) {
 	}
 }
 
-function setFilterAttr(photo, minRating, maxRating, tags) {
-	const xmpInfo = readXMP(photo);
-	if (minRating <= xmpInfo && xmpInfo <= maxRating          // rating matches query
-		&& tags.every(tag => xmpInfo.tags.includes(tag))) {   // tags match query
-		this.inFilter = true;
-	} else {
-		this.inFitler = false;  // shouldn't be necessary but just to make sure
-	}
-}
 
 module.exports = {
 	Photo,
 	addPhoto,
-	generateXMPs,
 	setRating,
 	addTag,
 	removeTag,
 	toggleTag,
-	setFilterAttr
 };
