@@ -236,13 +236,13 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 			path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
 			[ path.join(destDir, file) ]
 		);
+		photoTools.generateEmptyXMP(photoObj);
 
 		photoObj.loaded = true;
 		mainWindow.webContents.send("update-projects", proj.getProjects());
 	}
 
-	photoTools.generateXMPs(newProj);
-	proje.setLoading(false);
+	proj.setLoading(false);
 	mainWindow.webContents.send("update-projects", proj.getProjects());  // this is to mark the copies icon as finished
 	const endCopy = new Date();
 	const copyDiff = (endCopy - endPhotoAdd);

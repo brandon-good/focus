@@ -54,13 +54,18 @@ function addPhoto(project, name) {
 
 function generateXMPs(project) {
 	for (const photo of project.photos) {
-		// Skip if the XMP file already exists
-		if (fs.existsSync(photo.xmpPath)) {
-			console.log(`${photo.xmpPath} already exists. Skipping.`);
-			continue;
-		}
-		generateXMP(photo, { rating: 0, tags: [] });
+		generateEmptyXMP(photo);
 	}
+}
+
+function generateEmptyXMP(photo) {
+	// Skip if the XMP file already exists
+	if (fs.existsSync(photo.xmpPath)) {
+		console.log(`${photo.xmpPath} already exists. Skipping.`);
+		continue;
+	}
+
+	generateXMP(photo, { rating: 0, tags: [] });
 }
 
 function generateXMP(photo, XMPinfo) {
