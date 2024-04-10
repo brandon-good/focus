@@ -180,6 +180,10 @@ ipcMain.handle("filter-photos", (e, name, minRating, maxRating, tags) => {
 	proj.filter(proj.getProject(name), minRating, maxRating, tags);
 });
 
+ipcMain.handle("export-project", (e, name, folderPath) => {
+	proj.exportProject(proj.getProject(name), folderPath);
+});
+
 ipcMain.handle("get-open-projects", () => proj.getOpenProjects());
 
 ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {

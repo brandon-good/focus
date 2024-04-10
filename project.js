@@ -91,6 +91,7 @@ function closeSelectedProject() {
 	const selectedProject = projects.find((project) => project.selected);
 	selectedProject.open = false;
 	selectedProject.selected = false;
+	exportProject(selectedProject, "/Users/katelynrohrer/Desktop/export")
 	return projects;
 }
 
@@ -132,7 +133,7 @@ async function unArchiveProject(name) {
 	await generateJPGPreviews(
 		path.join(project.filepath, utils.PREVIEW_FOLDER_NAME),
 		fs
-			.readdirSync(project.destDir) // TODO newProj and args are undefined (bennett!)
+			.readdirSync(project.destDir)
 			.filter(
 				(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
 			)
@@ -296,6 +297,42 @@ function removeFilters() {
 	return projects;
 }
 
+function exportProject(project, folderPath) {
+	if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath);
+	const filterActive = project.photos.some(photo => photo.inFilter);
+
+	if (filterActive) { // if we have a filter, only export the filtered ones
+		for (const photo of project.photos) {
+			if (photo.inFilter) {
+				exportPhoto(photo, folderPath)
+			}
+		}
+	} else { // otherwise, export all
+		for (const photo of project.photos) {
+			exportPhoto(photo, folderPath)
+		}
+	}
+
+}
+
+function exportPhoto(photo, folderPath) {
+	const exportRawPath = path.join(folderPath, photo.name);
+	fs.copyFile(photo.destPath, exportRawPath, (err) => {
+		if (err) {
+			console.error('Error copying the file: ' + photo.name, err);
+		}
+		console.log(photo.name + ' exported to ' + exportRawPath);
+	});
+
+	const exportXMPPath = path.join(folderPath, path.basename(photo.xmpPath));
+	fs.copyFile(photo.xmpPath, exportXMPPath, (err) => {
+		if (err) {
+			console.error('Error copying the file: ' + photo.xmpPath, err);
+		}
+		console.log(path.basename(photo.xmpPath) + ' exported to ' + exportXMPPath);
+	});
+}
+
 module.exports = {
 	// these are methods
 	getProject,
@@ -322,6 +359,7 @@ module.exports = {
 	unArchiveProject,
 	deleteProject,
 	filter,
+	exportProject,
 
 	// the below are unused in main as of right now, might be able to delete?
 	saveUserProjects,
