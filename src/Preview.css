@@ -8,6 +8,7 @@
 	gap: 0.5rem;
 	height: min-content;
 	padding: 0.5rem;
+	width: 100%;
 }
 
 .preview .MuiSkeleton-rounded {

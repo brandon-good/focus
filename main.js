@@ -109,7 +109,7 @@ function verifyInstallDirectory() {
 	if (!fs.existsSync(install_dir)) fs.mkdirSync(install_dir);
 }
 
-function uninstall_app() {
+function uninstall() {
 	utils.rmdir(install_dir);
 	fs.unlinkSync(path.join(userdata_dir, install_dir_filename));
 }
@@ -147,34 +147,45 @@ ipcMain.handle("get-project-names", () =>
 	proj.getProjects().map((proj) => proj.name)
 );
 
-ipcMain.handle("open-project", (e, name) => {
-	switchToPage("projects");
-	return proj.openProject(name);
-});
-
-ipcMain.handle("close-selected-project", () => {
-	const projects = proj.closeSelectedProject();
-	const openProjects = proj.getOpenProjects();
-	if (openProjects.length > 0) {
-		openProjects[openProjects.length - 1].open = true;
-		openProjects[openProjects.length - 1].selected = true;
+ipcMain.on("open-project", async (e, name) => {
+	proj.openProject(name);
+	if (!mainWindow.getURL().includes("projects")) {
+		switchToPage("projects");
 	} else {
-		switchToPage("home");
+		mainWindow.webContents.send("update-projects", proj.getProjects());
 	}
-	return projects;
+
+	const project = proj.getSelectedProject();
+	if (project.archived) {
+		for (const photo of project.photos) {
+			await proj.generateJPGPreviews(
+				path.join(project.filepath, utils.PREVIEW_FOLDER_NAME),
+				[photo.destPath]
+			);
+			photoTools.generateEmptyXMP(photo);
+
+			photo.loading = false;
+			mainWindow.webContents.send("update-projects", proj.getProjects());
+		}
+
+		project.archived = false;
+		project.loading = false;
+		mainWindow.webContents.send("update-projects", proj.getProjects());
+	}
 });
 
-ipcMain.handle("archive-project", (e, name) => {
-	proj.archiveProject(proj.getProject(name));
-});
+ipcMain.handle("close-selected-project", () => proj.closeSelectedProject());
 
-ipcMain.handle("unarchive-project", async (e, name) => {
-	await proj.unArchiveProject(proj.getProject(name));
-});
+ipcMain.handle("archive-selected-project", () => proj.archiveSelectedProject());
 
-ipcMain.handle("delete-project", (e, name) => {
-	proj.deleteProject(proj.getProject(name));
-});
+ipcMain.handle(
+	"unarchive-project",
+	async (e, name) => await proj.unArchiveProject(proj.getProject(name))
+);
+
+ipcMain.handle("delete-selected-project", (e, name) =>
+	proj.deleteSelectedProject()
+);
 
 ipcMain.handle("get-open-projects", () => proj.getOpenProjects());
 
@@ -187,48 +198,63 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	}
 
 	const photoLoc = srcDir ? srcDir : destDir;
-
 	const newProj = proj.newProject(name, srcDir, destDir, install_dir);
 
-	// add photo names to the project
-	fs.readdirSync(photoLoc)
+	// below we are looping over the photo directory multiple times
+	// coalesce these into 1 for loop that does the following
+	//		adds photo to list of photos in project
+	//		generates JPG preview
+	//		updates front end with new information
+
+	const startRead = new Date();
+	const photoFiles = fs
+		.readdirSync(photoLoc)
 		.filter(
 			(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
-		)
-		.forEach((file) => photoTools.addPhoto(newProj, file));
+		);
+	const endRead = new Date();
+	const readDiff = endRead - startRead;
 
+	for (const file of photoFiles) {
+		photoTools.addPhoto(newProj, file);
+	}
+
+	const endPhotoAdd = new Date();
+	const photoAddDiff = endPhotoAdd - endRead;
+
+	// must occur after creating photo objects to set the selected photo
 	proj.openProject(newProj.name);
 	switchToPage("projects");
 
-	await proj.generateJPGPreviews(
-		path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
-		fs
-			.readdirSync(photoLoc)
-			.filter(
-				(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
-			)
-			.map((file) => path.join(photoLoc, file))
-	);
+	for (let i = 0; i < newProj.photos.length; i++) {
+		const file = photoFiles[i];
+		const photo = newProj.photos[i];
 
-	// this should happen in the background ideally
-	// do not copy files if we are creating a project from existing destination
-	if (srcDir) {
-		await copyFiles(
-			srcDir,
-			destDir,
-			fs
-				.readdirSync(srcDir)
-				.filter(
-					(file) =>
-						path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
-				)
+		// do not copy files if we are creating a project from existing destination
+		if (srcDir) {
+			await copyFiles(srcDir, destDir, [file]);
+		}
+
+		await proj.generateJPGPreviews(
+			path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
+			[path.join(destDir, file)]
 		);
+		photoTools.generateEmptyXMP(photo);
+
+		photo.loading = false;
+		mainWindow.webContents.send("update-projects", proj.getProjects());
 	}
 
-	photoTools.generateXMPs(newProj);
-
 	proj.setLoading(false);
-	mainWindow.webContents.send("update-projects", proj.getProjects());
+	mainWindow.webContents.send("update-projects", proj.getProjects()); // this is to mark the copies icon as finished
+
+	const endCopy = new Date();
+	const copyDiff = endCopy - endPhotoAdd;
+
+	console.log("reading took:       " + Math.round(readDiff) + " ms");
+	console.log("photo add took:     " + Math.round(photoAddDiff) + " ms");
+	console.log("copying took:       " + Math.round(copyDiff) + " ms");
+
 	return errors;
 });
 
@@ -238,8 +264,8 @@ ipcMain.handle("select-project", (e, name) => proj.selectProject(name));
 
 ipcMain.handle("select-photo", (e, name) => proj.selectPhoto(name));
 
-ipcMain.on("uninstall_app", async (e, args) => {
-	await uninstall_app();
+ipcMain.on("uninstall", async (e, args) => {
+	uninstall();
 	// Retrieve all open windows
 	const allWindows = BrowserWindow.getAllWindows();
 
@@ -260,10 +286,7 @@ ipcMain.handle("add-tag", (e, name, tag) => photoTools.addTag(name, tag));
 
 ipcMain.handle("remove-tag", (e, name, tag) => photoTools.removeTag(name, tag));
 
-ipcMain.handle('delete-photo', (e, photoFilename) => {
-	let project = proj.getSelectedProject();
-	proj.removePhoto(project, photoFilename);
-})
+ipcMain.handle("delete-photo", (e, name) => proj.deletePhoto(name));
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

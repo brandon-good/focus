@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import "./Home.css";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import UnarchiveIcon from "@mui/icons-material/Unarchive";
 import { Button } from "@mui/material";
 
 export default function Home() {
-	const [projectNames, setProjectNames] = useState([]);
+	const [projects, setProjects] = useState([]);
 
 	useEffect(() => {
 		window.ipcRenderer
-			.invoke("get-project-names")
-			.then((newProjectNames) => setProjectNames(newProjectNames));
+			.invoke("get-projects")
+			.then((newProjects) => setProjects(newProjects));
 	}, []);
 
 	return (
@@ -17,13 +19,14 @@ export default function Home() {
 				<h1>Focus</h1>
 				<h2>Photo culling made simple.</h2>
 			</div>
-			{projectNames.map((name) => (
+			{projects.map((project) => (
 				<Button
-					key={name}
-					onClick={() => window.ipcRenderer.invoke("open-project", name)}
+					key={project.name}
+					onClick={() => window.ipcRenderer.send("open-project", project.name)}
+					startIcon={!project.archived ? <OpenInNewIcon /> : <UnarchiveIcon />}
 					variant="outlined"
 				>
-					{name}
+					{project.name}
 				</Button>
 			))}
 			<Button

@@ -48,37 +48,40 @@ function getSelectedPhoto() {
 	return getSelectedProject().photos.find((photo) => photo.selected);
 }
 
-function removePhoto(project, photoFilename) {
-	// delete the xmp, 
+function deletePhoto(name) {
+	// delete the xmp,
 	// delete the raw photo from dest dir
 	// delete the preview
-	console.log('deleting photo ' + photoFilename + ' from project ' + project.name);
-	console.log('0 name ' + project.photos[0].name)
-	const photo = project.photos.find((p) => p.name === photoFilename)
+	const project = getSelectedProject();
+	console.log("deleting photo " + name + " from project " + project.name);
+	const photo = project.photos.find((photo) => photo.name === name);
 	const photoIndex = project.photos.indexOf(photo);
 
 	if (photoIndex === -1) {
-		throw Error("photo " + photoFilename + " does not exist.")
-	}
-	if (photoIndex > -1) {
+		throw Error("photo " + name + " does not exist.");
+	} else if (photoIndex > -1) {
 		project.photos.splice(photoIndex, 1);
 	}
 
-	console.log(photo.destPath)
-	let pathToPreview = photo.previewPath.split('preview://')[1]
-	console.log(pathToPreview)
-	console.log(photo.xmpPath)
+	console.log(photo.destPath);
+	console.log(photo.previewPath);
+	console.log(photo.xmpPath);
 	try {
 		(async () => {
-			await trash([photo.destPath, pathToPreview, photo.xmpPath]);
+			await trash([photo.destPath, photo.previewPath, photo.xmpPath]);
 		})();
+	} catch (error) {
+		console.log(error);
+		console.log("failed to fully delete photo.");
 	}
-	catch (error) {
-		console.log(error)
-		console.log('failed to fully delete photo.')
-	} finally {
-		return projects;
+
+	const selectedProject = getSelectedProject();
+	if (selectedProject.photos.length === 0) {
+		deleteSelectedProject();
+	} else if (selectedProject.photos.every((photo) => !photo.selected)) {
+		selectedProject.photos[0].selected = true;
 	}
+	return projects;
 }
 
 function selectProject(name) {
@@ -125,6 +128,11 @@ function closeSelectedProject() {
 	const selectedProject = projects.find((project) => project.selected);
 	selectedProject.open = false;
 	selectedProject.selected = false;
+	const openProjects = getOpenProjects();
+	if (openProjects.length > 0) {
+		openProjects[openProjects.length - 1].open = true;
+		openProjects[openProjects.length - 1].selected = true;
+	}
 	return projects;
 }
 
@@ -152,36 +160,42 @@ function projectFromJson(json) {
 	return newProj;
 }
 
-function archiveProject(name) {
-	const project = getProject(name);
-	const previewsFile = path.join(project.filepath, utils.PREVIEW_FOLDER_NAME);
-	utils.rmdir(previewsFile);
-	projects.remove(project);
-	project.open = false;
-	project.archived = true;
-}
-
-async function unArchiveProject(name) {
-	const project = getProject(name);
-	await generateJPGPreviews(
-		path.join(project.filepath, utils.PREVIEW_FOLDER_NAME),
-		fs
-			.readdirSync(project.destDir) // TODO newProj and args are undefined (bennett!)
-			.filter(
-				(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
-			)
-			.map((file) => path.join(project.destDir, file))
+function archiveSelectedProject() {
+	const selectedProject = projects.find((project) => project.selected);
+	const previewsFile = path.join(
+		selectedProject.filepath,
+		utils.PREVIEW_FOLDER_NAME
 	);
-	project.archived = false;
-	project.open = false;
+	utils.rmdir(previewsFile);
+	selectedProject.open = false;
+	selectedProject.selected = false;
+	selectedProject.photos = selectedProject.photos.map((photo) => ({
+		...photo,
+		loading: true,
+	}));
+	selectedProject.archived = true;
+	selectedProject.loading = true;
+	const openProjects = getOpenProjects();
+	if (openProjects.length > 0) {
+		openProjects[openProjects.length - 1].open = true;
+		openProjects[openProjects.length - 1].selected = true;
+	}
+	return projects;
 }
 
-function deleteProject(name) {
+function deleteSelectedProject() {
 	// this assumes the user has already confirmed that they want to delete the project
-	const project = getProject(name);
-	project.open = false;
-	utils.rmdir(project.filepath);
-	projects.remove(project);
+	const selectedProject = getSelectedProject();
+	selectedProject.open = false;
+	selectedProject.selected = false;
+	utils.rmdir(selectedProject.filepath);
+	projects.splice(projects.indexOf(selectedProject), 1);
+	const openProjects = getOpenProjects();
+	if (openProjects.length > 0) {
+		openProjects[openProjects.length - 1].open = true;
+		openProjects[openProjects.length - 1].selected = true;
+	}
+	return projects;
 }
 
 function createProjectDir(project) {
@@ -309,7 +323,7 @@ module.exports = {
 	getOpenProjects,
 	getSelectedProject,
 	getPhoto,
-	removePhoto,
+	deletePhoto,
 	getSelectedPhoto,
 	selectProject,
 	selectPhoto,
@@ -325,9 +339,8 @@ module.exports = {
 	verifyNewProject,
 	loadProjects,
 	saveUserData,
-	archiveProject,
-	unArchiveProject,
-	deleteProject,
+	archiveSelectedProject,
+	deleteSelectedProject,
 
 	// the below are unused in main as of right now, might be able to delete?
 	saveUserProjects,
