@@ -24,16 +24,11 @@ class Photo {
 }
 
 function addPhoto(project, name) {
-	const previewPath =
-		`preview://${path
-			.join(
-				project.filepath,
-				utils.PREVIEW_FOLDER_NAME,
-				path.basename(name, path.extname(name)) + ".jpg"
-			)
-			.replace(/\\/g, "/")}`;
-	console.log(previewPath);
-
+	const previewPath = path.join(
+		project.filepath,
+		utils.PREVIEW_FOLDER_NAME,
+		path.basename(name, path.extname(name)) + ".jpg"
+	);
 	project.photos.push(
 		new Photo(
 			name,

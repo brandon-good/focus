@@ -332,6 +332,150 @@ function loadProjects(install_dir) {
 				? "projects"
 				: "home";
 		}
+	})
+}
+function archiveSelectedProject() {
+	const selectedProject = projects.find((project) => project.selected);
+	const previewsFile = path.join(
+		selectedProject.filepath,
+		utils.PREVIEW_FOLDER_NAME
+	);
+	utils.rmdir(previewsFile);
+	selectedProject.open = false;
+	selectedProject.selected = false;
+	selectedProject.photos = selectedProject.photos.map((photo) => ({
+		...photo,
+		loading: true,
+	}));
+	selectedProject.archived = true;
+	selectedProject.loading = true;
+	const openProjects = getOpenProjects();
+	if (openProjects.length > 0) {
+		openProjects[openProjects.length - 1].open = true;
+		openProjects[openProjects.length - 1].selected = true;
+	}
+	return projects;
+}
+
+function deleteSelectedProject() {
+	// this assumes the user has already confirmed that they want to delete the project
+	const selectedProject = getSelectedProject();
+	selectedProject.open = false;
+	selectedProject.selected = false;
+	utils.rmdir(selectedProject.filepath);
+	projects.splice(projects.indexOf(selectedProject), 1);
+	const openProjects = getOpenProjects();
+	if (openProjects.length > 0) {
+		openProjects[openProjects.length - 1].open = true;
+		openProjects[openProjects.length - 1].selected = true;
+	}
+	return projects;
+}
+
+function createProjectDir(project) {
+	// check if this exists first inside install_dir, if not create it
+	let thumbLoc = path.join(project.filepath, utils.PREVIEW_FOLDER_NAME);
+	if (!fs.existsSync(project.filepath)) fs.mkdirSync(project.filepath);
+	if (!fs.existsSync(thumbLoc)) fs.mkdirSync(thumbLoc);
+
+	saveProject(project);
+}
+
+async function generateJPGPreviews(previewLocation, files) {
+	// files is passed as an argument because we might load the files from elsewhere
+	// it is possible that we have to recreate the thumbnails based on the destination copied files
+	// DO NOT OVERWRITE EXISTING FILES
+
+	await (async () => {
+		const done = await extractd.generate(files, {
+			destination: previewLocation,
+			persist: true,
+		});
+		console.dir(done);
+	})();
+}
+
+function setLoading(loading) {
+	projects = projects.map((project) => ({ ...project, loading: loading }));
+	return projects;
+}
+
+function saveProject(project) {
+	// save to this.save_dir
+	console.log("filepath:" + project.filepath);
+	console.log("name:" + project.name);
+	let stored_project_file_path = path.join(
+		project.filepath,
+		project.name + ".json"
+	);
+	console.log("SAVE PROJECT STR: ", stored_project_file_path);
+	console.log(JSON.stringify(project));
+	fs.writeFile(stored_project_file_path, JSON.stringify(project), (err) => {
+		if (err) console.log("ERROR SAVING USER PROJECT " + project.name);
+	});
+}
+
+function newUserProjects() {
+	// TODO double check this works
+	return Object.create(projects);
+}
+
+function userProjectsFromJson(json) {
+	return JSON.parse(json);
+}
+
+function addProject(project) {
+	// remove all_user_projects
+	projects = projects.map((project) => ({ ...project, selected: false }));
+	projects.push(project);
+}
+
+function saveUserProjects(install_dir) {
+	// save to install_dir
+	let storedProjectsFilePath = path.join(
+		install_dir,
+		utils.JSON_PROJECTS_FILENAME
+	);
+	fs.writeFile(storedProjectsFilePath, JSON.stringify(projects), (err) => {
+		if (err) console.log("ERROR SAVING USER PROJECT LIST");
+	});
+}
+
+function verifyNewProject(name, srcDir, destDir) {
+	return {
+		name:
+			name.length === 0 || projects.some((project) => project.name === name),
+		nameText:
+			name.length === 0
+				? "Name must be at least one character"
+				: "Name already exists",
+		srcDir: srcDir && !fs.existsSync(srcDir),
+		destDir: !fs.existsSync(destDir),
+	};
+}
+
+function loadProjects(install_dir) {
+	// returns a user projects object
+	const stored_projects_file_path = path.join(
+		install_dir,
+		utils.JSON_PROJECTS_FILENAME
+	);
+	fs.readFile(stored_projects_file_path, (err, content) => {
+		if (err) {
+			fs.writeFile(
+				stored_projects_file_path,
+				JSON.stringify(projects),
+				(err) => {
+					if (err) console.log("ERROR SAVING USER PROJECT LIST");
+				}
+			);
+			return "new-project";
+		} else {
+			projects = userProjectsFromJson(content);
+			return projects.filter((project) => project.open).length > 0
+				? "projects"
+				: "home";
+		}
 	});
 	return "home";
 }

@@ -176,11 +176,7 @@ ipcMain.on("open-project", async (e, name) => {
 
 ipcMain.handle("close-selected-project", () => proj.closeSelectedProject());
 
-ipcMain.handle("unarchive-project", async (e, name) => {
-	await proj.unArchiveProject(proj.getProject(name));
-	switchtopage("projects");
-	return proj.openproject(name);
-});
+ipcMain.handle("archive-selected-project", () => proj.archiveSelectedProject());
 
 ipcMain.handle(
 	"unarchive-project",
@@ -229,47 +225,33 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	proj.openProject(newProj.name);
 	switchToPage("projects");
 
-	await proj.generateJPGPreviews(
-		path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
-		photoFiles.map((file) => path.join(photoLoc, file))
-	);
+	for (let i = 0; i < newProj.photos.length; i++) {
+		const file = photoFiles[i];
+		const photo = newProj.photos[i];
 
-	proj.setLoading(false);
-	mainWindow.webContents.send("update-projects", proj.getProjects());
+		// do not copy files if we are creating a project from existing destination
+		if (srcDir) {
+			await copyFiles(srcDir, destDir, [file]);
+		}
 
-	const endPreviewGen = new Date();
-	const previewGenDiff = (endPreviewGen - endPhotoAdd);
-
-	// this should happen in the background ideally
-	// do not copy files if we are creating a project from existing destination
-	if (srcDir) {
-		await copyFiles(
-			srcDir,
-			destDir,
-			fs
-				.readdirSync(srcDir)
-				.filter(
-					(file) =>
-						path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
-				)
+		await proj.generateJPGPreviews(
+			path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
+			[path.join(destDir, file)]
 		);
 		photoTools.generateEmptyXMP(photo);
 
 		photo.loading = false;
 		mainWindow.webContents.send("update-projects", proj.getProjects());
 	}
-	photoTools.generateXMPs(newProj);
+
+	proj.setLoading(false);
+	mainWindow.webContents.send("update-projects", proj.getProjects()); // this is to mark the copies icon as finished
+
 	const endCopy = new Date();
-	const copyDiff = (endCopy - endPreviewGen);
-
-
-	newProj.copying = false;
-	mainWindow.webContents.send("update-projects", proj.getProjects());  // this is to mark the copies icon as finished
-	// need to save all updates in the current project to the XMP
+	const copyDiff = endCopy - endPhotoAdd;
 
 	console.log("reading took:       " + Math.round(readDiff) + " ms");
 	console.log("photo add took:     " + Math.round(photoAddDiff) + " ms");
-	console.log("preview gen took:   " + Math.round(previewGenDiff) + " ms");
 	console.log("copying took:       " + Math.round(copyDiff) + " ms");
 
 	return errors;
