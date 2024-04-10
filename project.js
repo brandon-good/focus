@@ -469,6 +469,7 @@ module.exports = {
 	unArchiveProject,
 	deleteProject,
 	filter,
+	exportProject,
 
 	// the below are unused in main as of right now, might be able to delete?
 	saveUserProjects,
