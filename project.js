@@ -72,7 +72,7 @@ function removePhoto(project, photoFilename) {
 	// delete the xmp, 
 	// delete the raw photo from dest dir
 	// delete the preview
-	const project = getSelectedProject();
+	//const project = getSelectedProject();
 	console.log("deleting photo " + name + " from project " + project.name);
 	const photo = project.photos.find((photo) => photo.name === name);
 	const photoIndex = project.photos.indexOf(photo);
@@ -393,7 +393,6 @@ async function generateJPGPreviews(previewLocation, files) {
 		});
 		console.dir(done);
 	})();
->>>>>>> f6ee4327839d83cdf6388600c9a0a32a1683b46d
 }
 
 function setLoading(loading) {
@@ -493,7 +492,8 @@ module.exports = {
 	getOpenProjects,
 	getSelectedProject,
 	getPhoto,
-	deletePhoto,
+	softDeletePhoto,
+	hardDeletePhotos,
 	getSelectedPhoto,
 	selectProject,
 	selectPhoto,
