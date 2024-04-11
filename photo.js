@@ -8,41 +8,34 @@ const console = require("console");
 const path = require("node:path");
 
 class Photo {
-	constructor(name, srcPath, destPath, previewPath, xmpPath) {
+	constructor(name, srcPath, destPath, previewPath, previewPathURL, xmpPath) {
 		this.name = name;
 		this.srcPath = srcPath;
 		this.destPath = destPath;
 		this.previewPath = previewPath;
+		this.previewPathURL = previewPathURL;
 		this.xmpPath = xmpPath;
 		this.rating = 0;
 		this.tags = [];
 		this.selected = false;
+		this.loading = true;
+		this.deleted = false;
 	}
 }
 
 function addPhoto(project, name) {
-	const previewPath = 
-			`preview://${path
-				.join(
-					project.filepath,
-					utils.PREVIEW_FOLDER_NAME,
-					path.basename(name, path.extname(name)) + ".jpg"
-				)
-				.replace(/\\/g, "/")}`;
-	console.log(previewPath);
-
+	const previewPath = path.join(
+		project.filepath,
+		utils.PREVIEW_FOLDER_NAME,
+		path.basename(name, path.extname(name)) + ".jpg"
+	);
 	project.photos.push(
 		new Photo(
 			name,
 			project.srcDir ? path.join(project.srcDir, name) : "",
 			path.join(project.destDir, name),
-			`preview://${path
-				.join(
-					project.filepath,
-					utils.PREVIEW_FOLDER_NAME,
-					path.basename(name, path.extname(name)) + ".jpg"
-				)
-				.replace(/\\/g, "/")}`,
+			previewPath,
+			`preview://${previewPath.replace(/\\/g, "/")}`,
 			path.join(
 				project.destDir,
 				path.basename(name, path.extname(name)) + ".XMP"
@@ -51,15 +44,32 @@ function addPhoto(project, name) {
 	);
 }
 
+function resetXMPs(project) {
+	// this is destructive!!
+
+	for (const photo of project.photos) {
+		if (fs.existsSync(photo.xmpPath)) {
+			fs.rm(photo.xmpPath);
+		}
+	}
+
+	generateXMPs(project);
+}
+
+
 function generateXMPs(project) {
 	for (const photo of project.photos) {
-		// Skip if the XMP file already exists
-		if (fs.existsSync(photo.xmpPath)) {
-			console.log(`${photo.xmpPath} already exists. Skipping.`);
-			continue;
-		}
-		generateXMP(photo, { rating: 0, tags: [] });
+		generateEmptyXMP(photo);
 	}
+}
+
+function generateEmptyXMP(photo) {
+	// Skip if the XMP file already exists
+	if (fs.existsSync(photo.xmpPath)) {
+		console.log(`${photo.xmpPath} already exists. Skipping.`);
+		return;
+	}
+	generateXMP(photo, { rating: 0, tags: [] });
 }
 
 function generateXMP(photo, XMPinfo) {
@@ -167,7 +177,10 @@ function toggleTag(photo, tag) {
 module.exports = {
 	Photo,
 	addPhoto,
+	resetXMPs,
 	generateXMPs,
+	generateEmptyXMP,
+	generateXMP,
 	setRating,
 	addTag,
 	removeTag,

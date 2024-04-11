@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Preview from "./Preview";
+import ProjectSettings from "./ProjectSettings";
 import "./Projects.css";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CloseIcon from "@mui/icons-material/Close";
@@ -8,7 +9,6 @@ import NewProjectMenu from "./NewProjectMenu";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
-import LinearProgress from "@mui/material/LinearProgress";
 import Skeleton from "@mui/material/Skeleton";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
@@ -19,41 +19,49 @@ export default function Projects() {
 	const [projectIndex, setProjectIndex] = useState(-1);
 	const [previewIndex, setPreviewIndex] = useState(0);
 	const [expanded, setExpanded] = useState(false);
+	const [loaded, setLoaded] = useState(false);
+
+	if (
+		loaded &&
+		(projects.length === 0 || projects.every((project) => !project.selected))
+	) {
+		window.location.href = "http://localhost:3000/home";
+	}
 
 	useEffect(() => {
 		window.ipcRenderer
 			.invoke("get-projects")
 			.then((newProjects) => setProjects([...newProjects]));
-		window.ipcRenderer.on("update-projects", (newProjects) =>
-			setProjects([...newProjects])
-		);
+		window.ipcRenderer.on("update-projects", (newProjects) => {
+			setProjects([...newProjects]);
+			setLoaded(true);
+		});
 	}, []);
 
 	useEffect(() => {
 		if (projects.length === 0) {
 			return;
 		}
+		const selectedProject = projects.find((project) => project.selected);
 		setTabIndex(
-			projects
-				.filter((project) => project.open)
-				.indexOf(projects.find((project) => project.selected))
+			projects.filter((project) => project.open).indexOf(selectedProject)
 		);
-		setProjectIndex(
-			projects.indexOf(projects.find((project) => project.selected))
-		);
+		setProjectIndex(projects.indexOf(selectedProject));
 		setPreviewIndex(
-			projects
-				.find((project) => project.selected)
-				.photos.indexOf(
-					projects
-						.find((project) => project.selected)
-						.photos.find((photo) => photo.selected)
-				)
+			selectedProject
+				? selectedProject.photos.indexOf(
+						projects
+							.find((project) => project.selected)
+							.photos.find((photo) => photo.selected)
+				  )
+				: -1
 		);
 	}, [projects]);
 
 	return (
-		projectIndex >= 0 && (
+		projectIndex >= 0 &&
+		projects[projectIndex] &&
+		projects[projectIndex].selected && (
 			<div id="projects-container">
 				<header>
 					<div>
@@ -96,14 +104,27 @@ export default function Projects() {
 						</IconButton>
 						<NewProjectMenu projects={projects} setProjects={setProjects} />
 					</div>
-					<Button variant="contained" endIcon={<OpenInNewIcon />}>
-						Export to Lightroom
-					</Button>
+					<div>
+						<Button variant="contained" endIcon={<OpenInNewIcon />}>
+							Export
+						</Button>
+						<ProjectSettings projects={projects} setProjects={setProjects} />
+					</div>
 				</header>
-				{projects[projectIndex].loading ? (
-					<div id="project-container">
-						<div id="preview-sidebar" style={{ width: "15rem" }}>
-							{projects[projectIndex].photos.map((photo) => (
+				<div id="project-container">
+					<div
+						id="preview-sidebar"
+						style={{ width: expanded ? "300%" : "15rem" }}
+					>
+						{projects[projectIndex].photos.map((photo) =>
+							!photo.loading ? (
+								<Preview
+									expanded={expanded}
+									key={photo.name}
+									photo={photo}
+									setProjects={setProjects}
+								/>
+							) : (
 								<div className="preview" key={photo.name}>
 									<Skeleton sx={{ height: "1rem" }} variant="rounded" />
 									<Skeleton sx={{ height: "7rem" }} variant="rounded" />
@@ -130,47 +151,27 @@ export default function Projects() {
 										/>
 									</div>
 								</div>
-							))}
-						</div>
-						<div id="preview-selected">
-							<div>
-								<span>Transferring your files...</span>
-								<LinearProgress />
-							</div>
-						</div>
+							)
+						)}
 					</div>
-				) : (
-					<div id="project-container">
-						<div
-							id="preview-sidebar"
-							style={{ width: expanded ? "300%" : "15rem" }}
-						>
-							{projects[projectIndex].photos.map((photo) => (
-								<Preview
-									expanded={expanded}
-									key={photo.name}
-									photo={photo}
-									setProjects={setProjects}
-								/>
-							))}
-						</div>
-						<div id="preview-selected">
-							<IconButton onClick={() => setExpanded(!expanded)} size="large">
-								<ChevronRightIcon
-									fontSize="large"
-									sx={{
-										transition: "1s",
-										transform: `rotate(${expanded ? "180" : "0"}deg)`,
-									}}
-								/>
-							</IconButton>
+					<div id="preview-selected">
+						<IconButton onClick={() => setExpanded(!expanded)} size="large">
+							<ChevronRightIcon
+								fontSize="large"
+								sx={{
+									transition: "1s",
+									transform: `rotate(${expanded ? "180" : "0"}deg)`,
+								}}
+							/>
+						</IconButton>
+						{!projects[projectIndex].photos[previewIndex].loading && (
 							<img
 								alt=""
-								src={projects[projectIndex].photos[previewIndex].previewPath}
+								src={projects[projectIndex].photos[previewIndex].previewPathURL}
 							/>
-						</div>
+						)}
 					</div>
-				)}
+				</div>
 			</div>
 		)
 	);

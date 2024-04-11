@@ -13,7 +13,7 @@ export default function Preview({ expanded, photo, setProjects }) {
 			onMouseLeave={() => setIsHover(false)}
 			style={{
 				border: photo.selected ? "2px solid #89B3F7" : "none",
-				width: expanded ? "15rem" : "100%rem",
+				width: expanded ? "15rem" : "100%",
 			}}
 		>
 			<span>{photo.name}</span>
@@ -25,7 +25,7 @@ export default function Preview({ expanded, photo, setProjects }) {
 							.invoke("select-photo", photo.name)
 							.then((newProjects) => setProjects([...newProjects]))
 					}
-					src={photo.previewPath}
+					src={photo.previewPathURL}
 					style={{ cursor: "pointer" }}
 				/>
 				{isHover && (

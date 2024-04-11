@@ -109,7 +109,7 @@ function verifyInstallDirectory() {
 	if (!fs.existsSync(install_dir)) fs.mkdirSync(install_dir);
 }
 
-function uninstall_app() {
+function uninstall() {
 	utils.rmdir(install_dir);
 	fs.unlinkSync(path.join(userdata_dir, install_dir_filename));
 }
@@ -147,36 +147,45 @@ ipcMain.handle("get-project-names", () =>
 	proj.getProjects().map((proj) => proj.name)
 );
 
-ipcMain.handle("open-project", (e, name) => {
-	switchToPage("projects");
-	return proj.openProject(name);
-});
-
-ipcMain.handle("close-selected-project", () => {
-	const projects = proj.closeSelectedProject();
-	const openProjects = proj.getOpenProjects();
-	if (openProjects.length > 0) {
-		openProjects[openProjects.length - 1].open = true;
-		openProjects[openProjects.length - 1].selected = true;
+ipcMain.on("open-project", async (e, name) => {
+	proj.openProject(name);
+	if (!mainWindow.getURL().includes("projects")) {
+		switchToPage("projects");
 	} else {
-		switchToPage("home");
+		mainWindow.webContents.send("update-projects", proj.getProjects());
 	}
-	return projects;
+
+	const project = proj.getSelectedProject();
+	if (project.archived) {
+		for (const photo of project.photos) {
+			await proj.generateJPGPreviews(
+				path.join(project.filepath, utils.PREVIEW_FOLDER_NAME),
+				[photo.destPath]
+			);
+			photoTools.generateEmptyXMP(photo);
+
+			photo.loading = false;
+			mainWindow.webContents.send("update-projects", proj.getProjects());
+		}
+
+		project.archived = false;
+		project.loading = false;
+		mainWindow.webContents.send("update-projects", proj.getProjects());
+	}
 });
 
-ipcMain.handle("archive-project", (e, name) => {
-	proj.archiveProject(proj.getProject(name));
-});
+ipcMain.handle("close-selected-project", () => proj.closeSelectedProject());
 
-ipcMain.handle("unarchive-project", async (e, name) => {
-	await proj.unArchiveProject(proj.getProject(name));
-	switchtopage("projects");
-	return proj.openproject(name);
-});
+ipcMain.handle("archive-selected-project", () => proj.archiveSelectedProject());
 
-ipcMain.handle("delete-project", (e, name) => {
-	proj.deleteProject(proj.getProject(name));
-});
+ipcMain.handle(
+	"unarchive-project",
+	async (e, name) => await proj.unArchiveProject(proj.getProject(name))
+);
+
+ipcMain.handle("delete-selected-project", (e, name) =>
+	proj.deleteSelectedProject()
+);
 
 ipcMain.handle("get-open-projects", () => proj.getOpenProjects());
 
@@ -209,6 +218,7 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	for (const file of photoFiles) {
 		photoTools.addPhoto(newProj, file);	
 	}
+
 	const endPhotoAdd = new Date();
 	const photoAddDiff = (endPhotoAdd - endRead);
 
@@ -216,43 +226,38 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	proj.openProject(newProj.name);
 	switchToPage("projects");
 
-	await proj.generateJPGPreviews(
-		path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
-		photoFiles.map((file) => path.join(photoLoc, file))
-	);
+	proj.setLoading(false);  // SEAN REMOVE THIS ONE
+	
+	for (let i = 0; i < newProj.photos.length; i++) {
+		const file = photoFiles[i];
+		const photoObj = newProj.photos[i];
+
+		// do not copy files if we are creating a project from existing destination
+		if (srcDir) {
+			await copyFiles(
+				srcDir,
+				destDir,
+				[file]
+			);
+		}
+
+		await proj.generateJPGPreviews(
+			path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
+			[ path.join(destDir, file) ]
+		);
+		photoTools.generateEmptyXMP(photoObj);
+
+		photoObj.loaded = true;
+		mainWindow.webContents.send("update-projects", proj.getProjects());
+	}
 
 	proj.setLoading(false);
-	mainWindow.webContents.send("update-projects", proj.getProjects());
-
-	const endPreviewGen = new Date();
-	const previewGenDiff = (endPreviewGen - endPhotoAdd);
-
-	// this should happen in the background ideally
-	// do not copy files if we are creating a project from existing destination
-	if (srcDir) {
-		await copyFiles(
-			srcDir,
-			destDir,
-			fs
-				.readdirSync(srcDir)
-				.filter(
-					(file) =>
-						path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
-				)
-		);
-	}
-	photoTools.generateXMPs(newProj);
-	const endCopy = new Date();
-	const copyDiff = (endCopy - endPreviewGen);
-
-
-	newProj.copying = false;
 	mainWindow.webContents.send("update-projects", proj.getProjects());  // this is to mark the copies icon as finished
-	// need to save all updates in the current project to the XMP
+	const endCopy = new Date();
+	const copyDiff = (endCopy - endPhotoAdd);
 	
 	console.log("reading took:       " + Math.round(readDiff) + " ms");
 	console.log("photo add took:     " + Math.round(photoAddDiff) + " ms");
-	console.log("preview gen took:   " + Math.round(previewGenDiff) + " ms");
 	console.log("copying took:       " + Math.round(copyDiff) + " ms");
 
 	return errors;
@@ -264,8 +269,8 @@ ipcMain.handle("select-project", (e, name) => proj.selectProject(name));
 
 ipcMain.handle("select-photo", (e, name) => proj.selectPhoto(name));
 
-ipcMain.on("uninstall_app", async (e, args) => {
-	await uninstall_app();
+ipcMain.on("uninstall", async (e, args) => {
+	uninstall();
 	// Retrieve all open windows
 	const allWindows = BrowserWindow.getAllWindows();
 
@@ -285,6 +290,8 @@ ipcMain.handle("set-rating", (e, name, rating) =>
 ipcMain.handle("add-tag", (e, name, tag) => photoTools.addTag(name, tag));
 
 ipcMain.handle("remove-tag", (e, name, tag) => photoTools.removeTag(name, tag));
+
+ipcMain.handle("delete-photo", (e, name) => proj.deletePhoto(name));
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
