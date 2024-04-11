@@ -19,6 +19,7 @@ class Photo {
 		this.tags = [];
 		this.selected = false;
 		this.loading = true;
+		this.deleted = false;
 	}
 }
 
@@ -42,6 +43,19 @@ function addPhoto(project, name) {
 		)
 	);
 }
+
+function resetXMPs(project) {
+	// this is destructive!!
+
+	for (const photo of project.photos) {
+		if (fs.existsSync(photo.xmpPath)) {
+			fs.rm(photo.xmpPath);
+		}
+	}
+
+	generateXMPs(project);
+}
+
 
 function generateXMPs(project) {
 	for (const photo of project.photos) {
@@ -163,6 +177,7 @@ function toggleTag(photo, tag) {
 module.exports = {
 	Photo,
 	addPhoto,
+	resetXMPs,
 	generateXMPs,
 	generateEmptyXMP,
 	generateXMP,

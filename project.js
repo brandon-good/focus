@@ -48,8 +48,27 @@ function getSelectedPhoto() {
 	return getSelectedProject().photos.find((photo) => photo.selected);
 }
 
-function deletePhoto(name) {
-	// delete the xmp,
+function softDeletePhoto(project, photoFilename) {
+	const photo = project.photos.find((p) => p.name === photoFilename)
+	photo.deleted = true
+}
+
+function softRestorePhoto(project, photoFilename) {
+	const photo = project.photos.find((p) => p.name === photoFilename)
+	photo.deleted = false
+}
+
+function hardDeletePhotos(project) {
+	// given a project, truly delete all of the photos
+	// that have the photo.delete field set to true
+	const deletedPhotos = project.photos.filter((p) => p.deleted === true)
+	for (const photo of deletedPhotos) {
+		removePhoto(project, photo.name)
+	}
+}
+
+function removePhoto(project, photoFilename) {
+	// delete the xmp, 
 	// delete the raw photo from dest dir
 	// delete the preview
 	const project = getSelectedProject();
@@ -63,9 +82,11 @@ function deletePhoto(name) {
 		project.photos.splice(photoIndex, 1);
 	}
 
-	console.log(photo.destPath);
-	console.log(photo.previewPath);
-	console.log(photo.xmpPath);
+	photo.deleted = true;
+
+	console.log(photo.destPath)
+	console.log(photo.previewPath)
+	console.log(photo.xmpPath)
 	try {
 		(async () => {
 			await trash([photo.destPath, photo.previewPath, photo.xmpPath]);
