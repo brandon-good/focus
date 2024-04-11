@@ -30,7 +30,6 @@ function readXMPFile(photo) {
 	}
 }
 
-
 function readXMP(photo) {
 	const xmpInfo = {};
 	const xmp = readXMPFile(photo);
@@ -77,15 +76,31 @@ function writeXMPFile(photo, contents) {
 	});
 }
 
+function resetXMPs(project) {
+	// this is destructive!!
+
+	for (const photo of project.photos) {
+		if (fs.existsSync(photo.xmpPath)) {
+			fs.rm(photo.xmpPath);
+		}
+	}
+
+	generateXMPs(project);
+}
+
 function generateXMPs(project) {
 	for (const photo of project.photos) {
-		// Skip if the XMP file already exists
-		if (fs.existsSync(photo.xmpPath)) {
-			console.log(`${photo.xmpPath} already exists. Skipping.`);
-			continue;
-		}
-		generateXMP(photo, { rating: 0, tags: [] });
+		generateEmptyXMP(photo);
 	}
+}
+
+function generateEmptyXMP(photo) {
+	// Skip if the XMP file already exists
+	if (fs.existsSync(photo.xmpPath)) {
+		console.log(`${photo.xmpPath} already exists. Skipping.`);
+		return;
+	}
+	generateXMP(photo, { rating: 0, tags: [] });
 }
 
 function generateXMP(photo, XMPinfo) {
@@ -114,7 +129,6 @@ function generateXMP(photo, XMPinfo) {
 	writeXMPFile(photo, header + rating + tags + footer);
 }
 
-
 function rmdir(dir) {
 	const list = fs.readdirSync(dir);
 	for (let i = 0; i < list.length; i++) {
@@ -136,9 +150,11 @@ function rmdir(dir) {
 module.exports = {
 	readXMPFile,
 	readXMP,
-	generateXMPs,
-	generateXMP,
 	writeXMPFile,
+	resetXMPs,
+	generateXMPs,
+	generateEmptyXMP,
+	generateXMP,
 	rmdir,
 
 	JSON_PROJECTS_FILENAME,
