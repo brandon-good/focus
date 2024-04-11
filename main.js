@@ -187,6 +187,14 @@ ipcMain.handle("delete-selected-project", (e, name) =>
 	proj.deleteSelectedProject()
 );
 
+ipcMain.handle("filter-photos", (e, name, minRating, maxRating, tags) => {
+	proj.filter(proj.getProject(name), minRating, maxRating, tags);
+});
+
+ipcMain.handle("export-project", (e, name, folderPath) => {
+	proj.exportProject(proj.getProject(name), folderPath);
+});
+
 ipcMain.handle("get-open-projects", () => proj.getOpenProjects());
 
 ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
@@ -245,7 +253,7 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 			path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
 			[ path.join(destDir, file) ]
 		);
-		photoTools.generateEmptyXMP(photoObj);
+		utils.generateEmptyXMP(photoObj);
 
 		photoObj.loaded = true;
 		mainWindow.webContents.send("update-projects", proj.getProjects());
@@ -291,12 +299,13 @@ ipcMain.handle("add-tag", (e, name, tag) => photoTools.addTag(name, tag));
 
 ipcMain.handle("remove-tag", (e, name, tag) => photoTools.removeTag(name, tag));
 
-ipcMain.handle("delete-photo", (e, name) => proj.deletePhoto(name));
+// TODO set deletePhoto to either soft or hard or whatever we want it to be.
+// Just "deletePhoto" doesn't exist anymore
+// ipcMain.handle("delete-photo", (e, name) => proj.deletePhoto(name));
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
-
 app.on("window-all-closed", function () {
 	// if (!utils.isMac)
 	app.quit();

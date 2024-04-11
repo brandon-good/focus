@@ -213,127 +213,6 @@ async function generatePreviewsFromDest(name) {
 	);
 }
 
-function deleteSelectedProject() {
-	// this assumes the user has already confirmed that they want to delete the project
-	const selectedProject = getSelectedProject();
-	selectedProject.open = false;
-	selectedProject.selected = false;
-	utils.rmdir(selectedProject.filepath);
-	projects.splice(projects.indexOf(selectedProject), 1);
-	const openProjects = getOpenProjects();
-	if (openProjects.length > 0) {
-		openProjects[openProjects.length - 1].open = true;
-		openProjects[openProjects.length - 1].selected = true;
-	}
-	return projects;
-}
-
-function createProjectDir(project) {
-	// check if this exists first inside install_dir, if not create it
-	let thumbLoc = path.join(project.filepath, utils.PREVIEW_FOLDER_NAME);
-	if (!fs.existsSync(project.filepath)) fs.mkdirSync(project.filepath);
-	if (!fs.existsSync(thumbLoc)) fs.mkdirSync(thumbLoc);
-
-	saveProject(project);
-}
-
-async function generateJPGPreviews(previewLocation, files) {
-	// files is passed as an argument because we might load the files from elsewhere
-	// it is possible that we have to recreate the thumbnails based on the destination copied files
-	// DO NOT OVERWRITE EXISTING FILES
-
-	await (async () => {
-		const done = await extractd.generate(files, {
-			destination: previewLocation,
-			persist: true,
-		});
-		console.dir(done);
-	})();
-}
-
-function setLoading(loading) {
-	projects = projects.map((project) => ({ ...project, loading: loading }));
-	return projects;
-}
-
-function saveProject(project) {
-	// save to this.save_dir
-	console.log("filepath:" + project.filepath);
-	console.log("name:" + project.name);
-	let stored_project_file_path = path.join(
-		project.filepath,
-		project.name + ".json"
-	);
-	console.log("SAVE PROJECT STR: ", stored_project_file_path);
-	console.log(JSON.stringify(project));
-	fs.writeFile(stored_project_file_path, JSON.stringify(project), (err) => {
-		if (err) console.log("ERROR SAVING USER PROJECT " + project.name);
-	});
-}
-
-function newUserProjects() {
-	// TODO double check this works
-	return Object.create(projects);
-}
-
-function userProjectsFromJson(json) {
-	return JSON.parse(json);
-}
-
-function addProject(project) {
-	// remove all_user_projects
-	projects = projects.map((project) => ({ ...project, selected: false }));
-	projects.push(project);
-}
-
-function saveUserProjects(install_dir) {
-	// save to install_dir
-	let storedProjectsFilePath = path.join(
-		install_dir,
-		utils.JSON_PROJECTS_FILENAME
-	);
-	fs.writeFile(storedProjectsFilePath, JSON.stringify(projects), (err) => {
-		if (err) console.log("ERROR SAVING USER PROJECT LIST");
-	});
-}
-
-function verifyNewProject(name, srcDir, destDir) {
-	return {
-		name:
-			name.length === 0 || projects.some((project) => project.name === name),
-		nameText:
-			name.length === 0
-				? "Name must be at least one character"
-				: "Name already exists",
-		srcDir: srcDir && !fs.existsSync(srcDir),
-		destDir: !fs.existsSync(destDir),
-	};
-}
-
-function loadProjects(install_dir) {
-	// returns a user projects object
-	const stored_projects_file_path = path.join(
-		install_dir,
-		utils.JSON_PROJECTS_FILENAME
-	);
-	fs.readFile(stored_projects_file_path, (err, content) => {
-		if (err) {
-			fs.writeFile(
-				stored_projects_file_path,
-				JSON.stringify(projects),
-				(err) => {
-					if (err) console.log("ERROR SAVING USER PROJECT LIST");
-				}
-			);
-			return "new-project";
-		} else {
-			projects = userProjectsFromJson(content);
-			return projects.filter((project) => project.open).length > 0
-				? "projects"
-				: "home";
-		}
-	})
-}
 function archiveSelectedProject() {
 	const selectedProject = projects.find((project) => project.selected);
 	const previewsFile = path.join(
@@ -485,6 +364,69 @@ function saveUserData(install_dir) {
 	projects.forEach((project) => saveProject(project));
 }
 
+function filter(projName, minRating, maxRating, tags) {
+	const project = getProject(projName);
+	project.photos.forEach((photo) => {
+		setFilterAttr(photo, minRating, maxRating, tags)
+		console.log("Photo: " + photo.name);
+		console.log("Rating: " + photo.rating);
+		console.log("Filter? " + photo.inFilter);
+	})
+	return projects;
+}
+
+function setFilterAttr(photo, minRating, maxRating, tags) {
+	const xmpInfo = utils.readXMP(photo);
+	if (minRating <= xmpInfo.rating && xmpInfo.rating <= maxRating  // rating matches query
+		&& tags.every(tag => xmpInfo.tags.includes(tag))) {         // tags match query
+		photo.inFilter = true;
+	} else {
+		photo.inFilter = false;  // shouldn't be necessary but just to make sure
+	}
+}
+
+function removeFilters() {
+	this.photos.forEach((photo) => {
+		photo.inFilter = false;
+	})
+	return projects;
+}
+
+function exportProject(project, folderPath) {
+	if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath);
+	const filterActive = project.photos.some(photo => photo.inFilter);
+
+	if (filterActive) { // if we have a filter, only export the filtered ones
+		for (const photo of project.photos) {
+			if (photo.inFilter) {
+				exportPhoto(photo, folderPath)
+			}
+		}
+	} else { // otherwise, export all
+		for (const photo of project.photos) {
+			exportPhoto(photo, folderPath)
+		}
+	}
+}
+
+function exportPhoto(photo, folderPath) {
+	const exportRawPath = path.join(folderPath, photo.name);
+	fs.copyFile(photo.destPath, exportRawPath, (err) => {
+		if (err) {
+			console.error('Error copying the file: ' + photo.name, err);
+		}
+		console.log(photo.name + ' exported to ' + exportRawPath);
+	});
+
+	const exportXMPPath = path.join(folderPath, path.basename(photo.xmpPath));
+	fs.copyFile(photo.xmpPath, exportXMPPath, (err) => {
+		if (err) {
+			console.error('Error copying the file: ' + photo.xmpPath, err);
+		}
+		console.log(path.basename(photo.xmpPath) + ' exported to ' + exportXMPPath);
+	});
+}
+
 module.exports = {
 	// these are methods
 	getProject,
@@ -492,9 +434,11 @@ module.exports = {
 	getOpenProjects,
 	getSelectedProject,
 	getPhoto,
-	softDeletePhoto,
-	hardDeletePhotos,
 	getSelectedPhoto,
+	softDeletePhoto,
+	softRestorePhoto,
+	hardDeletePhotos,
+	removePhoto,
 	selectProject,
 	selectPhoto,
 	iterateSelectedPhoto,
@@ -502,20 +446,26 @@ module.exports = {
 	closeSelectedProject,
 	closeAllProjects,
 	newProject,
+	projectFromJson,
+	archiveProject,
+	unArchiveProject,
+	generatePreviewsFromDest,
+	archiveSelectedProject,
+	deleteSelectedProject,
+	createProjectDir,
 	generateJPGPreviews,
 	setLoading,
 	saveProject,
+	newUserProjects,
+	userProjectsFromJson,
 	addProject,
+	saveUserProjects,
 	verifyNewProject,
 	loadProjects,
 	saveUserData,
-	archiveSelectedProject,
-	deleteSelectedProject,
-
-	// the below are unused in main as of right now, might be able to delete?
-	saveUserProjects,
-	newUserProjects,
-	projectFromJson,
-	createProjectDir,
-	userProjectsFromJson,
+	filter,
+	setFilterAttr,
+	removeFilters,
+	exportProject,
+	exportPhoto
 };
