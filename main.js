@@ -215,55 +215,49 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 	//		updates front end with new information
 
 	const startRead = new Date();
-	const photoFiles = 
-			fs.readdirSync(photoLoc)
-				.filter(
-					(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
-				);
+	const photoFiles = fs
+		.readdirSync(photoLoc)
+		.filter(
+			(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
+		);
 	const endRead = new Date();
-	const readDiff = (endRead - startRead);
+	const readDiff = endRead - startRead;
 
 	for (const file of photoFiles) {
-		photoTools.addPhoto(newProj, file);	
+		photoTools.addPhoto(newProj, file);
 	}
 
 	const endPhotoAdd = new Date();
-	const photoAddDiff = (endPhotoAdd - endRead);
+	const photoAddDiff = endPhotoAdd - endRead;
 
 	// must occur after creating photo objects to set the selected photo
 	proj.openProject(newProj.name);
 	switchToPage("projects");
 
-	proj.setLoading(false);  // SEAN REMOVE THIS ONE
-	
 	for (let i = 0; i < newProj.photos.length; i++) {
 		const file = photoFiles[i];
 		const photoObj = newProj.photos[i];
 
 		// do not copy files if we are creating a project from existing destination
 		if (srcDir) {
-			await copyFiles(
-				srcDir,
-				destDir,
-				[file]
-			);
+			await copyFiles(srcDir, destDir, [file]);
 		}
 
 		await proj.generateJPGPreviews(
 			path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
-			[ path.join(destDir, file) ]
+			[path.join(destDir, file)]
 		);
 		utils.generateEmptyXMP(photoObj);
 
-		photoObj.loaded = true;
+		photoObj.loading = false;
 		mainWindow.webContents.send("update-projects", proj.getProjects());
 	}
 
 	proj.setLoading(false);
-	mainWindow.webContents.send("update-projects", proj.getProjects());  // this is to mark the copies icon as finished
+	mainWindow.webContents.send("update-projects", proj.getProjects()); // this is to mark the copies icon as finished
 	const endCopy = new Date();
-	const copyDiff = (endCopy - endPhotoAdd);
-	
+	const copyDiff = endCopy - endPhotoAdd;
+
 	console.log("reading took:       " + Math.round(readDiff) + " ms");
 	console.log("photo add took:     " + Math.round(photoAddDiff) + " ms");
 	console.log("copying took:       " + Math.round(copyDiff) + " ms");
