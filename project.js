@@ -110,6 +110,12 @@ function closeAllProjects() {
 	}));
 }
 
+function projectIsCopying() {
+	for (const project of projects) 
+		if (project.copying) return true;
+	return false;
+}
+
 function newProject(name, srcDir, destDir, installDir) {
 	const newProj = new Project(name, srcDir, destDir, installDir);
 

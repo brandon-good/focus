@@ -239,9 +239,8 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 		const photoObj = newProj.photos[i];
 
 		// do not copy files if we are creating a project from existing destination
-		if (srcDir) {
+		if (srcDir) 
 			await copyFiles(srcDir, destDir, [file]);
-		}
 
 		await proj.generateJPGPreviews(
 			path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
@@ -253,7 +252,8 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 		mainWindow.webContents.send("update-projects", proj.getProjects());
 	}
 
-	proj.setLoading(false);
+	newProj.loading = false;
+	newProj.copying = false;
 	mainWindow.webContents.send("update-projects", proj.getProjects()); // this is to mark the copies icon as finished
 	const endCopy = new Date();
 	const copyDiff = endCopy - endPhotoAdd;
@@ -281,7 +281,6 @@ ipcMain.on("uninstall", async (e, args) => {
 		window.close();
 	});
 
-	// Optionally, quit the app after all windows are closed
 	app.quit();
 });
 
@@ -301,6 +300,9 @@ ipcMain.handle("delete-photo", (e, name) => photoTools.removePhoto(name));
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on("window-all-closed", function () {
+	while (proj.projectIsCopying) ;  // do nothing while we still copy
+	// this will keep windows closed but the app running
+	
 	// if (!utils.isMac)
 	app.quit();
 	proj.closeAllProjects();
