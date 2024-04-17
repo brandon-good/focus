@@ -187,13 +187,13 @@ ipcMain.handle("delete-selected-project", (e, name) =>
 	proj.deleteSelectedProject()
 );
 
-ipcMain.handle("filter-photos", (e, name, minRating, maxRating, tags) => {
-	proj.filter(proj.getProject(name), minRating, maxRating, tags);
-});
+ipcMain.handle("filter-photos", (e, minRating, maxRating, tags) =>
+	proj.filter(minRating, maxRating, tags)
+);
 
-ipcMain.handle("export-project", (e, name, folderPath) => {
-	proj.exportProject(proj.getProject(name), folderPath);
-});
+ipcMain.handle("export-project", (e, name, folderPath) =>
+	proj.exportProject(proj.getProject(name), folderPath)
+);
 
 ipcMain.handle("get-open-projects", () => proj.getOpenProjects());
 

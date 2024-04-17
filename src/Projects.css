@@ -4,14 +4,52 @@
 	width: 100%;
 }
 
+#filter-container {
+	background: rgb(45, 45, 45);
+	display: flex;
+	flex-wrap: wrap;
+	position: sticky;
+	top: 0;
+	width: 100%;
+	z-index: 100;
+}
+
+#filter-container > * {
+	width: 100%;
+}
+
+#filter-container > div,
+#filter-container > span {
+	padding: 1rem;
+}
+
+#filter-container > div:first-of-type {
+	align-items: center;
+	display: flex;
+	flex-direction: column;
+}
+
+#filter-container > div:first-of-type > span:first-child,
+#filter-container > span {
+	color: white;
+}
+
 #preview-sidebar {
 	align-items: center;
 	background: rgba(255, 255, 255, 0.025);
 	display: flex;
+	flex: 1;
 	flex-wrap: wrap;
 	gap: 1rem;
+	padding: 0.75rem;
+}
+
+#preview-sidebar-container {
+	box-shadow: 0 1px 3px 0 #0000004d, 0 4px 8px 3px #00000026;
+	display: flex;
+	flex-direction: column;
+	overflow-x: hidden;
 	overflow-y: scroll;
-	padding: 1rem;
 	transition: 1s;
 }
 

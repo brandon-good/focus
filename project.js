@@ -50,26 +50,26 @@ function getSelectedPhoto() {
 }
 
 function softDeletePhoto(project, photoFilename) {
-	const photo = project.photos.find((p) => p.name === photoFilename)
-	photo.deleted = true
+	const photo = project.photos.find((p) => p.name === photoFilename);
+	photo.deleted = true;
 }
 
 function softRestorePhoto(project, photoFilename) {
-	const photo = project.photos.find((p) => p.name === photoFilename)
-	photo.deleted = false
+	const photo = project.photos.find((p) => p.name === photoFilename);
+	photo.deleted = false;
 }
 
 function hardDeletePhotos(project) {
 	// given a project, truly delete all of the photos
 	// that have the photo.delete field set to true
-	const deletedPhotos = project.photos.filter((p) => p.deleted === true)
+	const deletedPhotos = project.photos.filter((p) => p.deleted === true);
 	for (const photo of deletedPhotos) {
-		removePhoto(project, photo.name)
+		removePhoto(project, photo.name);
 	}
 }
 
 function removePhoto(project, photoFilename) {
-	// delete the xmp, 
+	// delete the xmp,
 	// delete the raw photo from dest dir
 	// delete the preview
 	//const project = getSelectedProject();
@@ -85,9 +85,9 @@ function removePhoto(project, photoFilename) {
 
 	photo.deleted = true;
 
-	console.log(photo.destPath)
-	console.log(photo.previewPath)
-	console.log(photo.xmpPath)
+	console.log(photo.destPath);
+	console.log(photo.previewPath);
+	console.log(photo.xmpPath);
 	try {
 		(async () => {
 			await trash([photo.destPath, photo.previewPath, photo.xmpPath]);
@@ -364,47 +364,53 @@ function saveUserData(install_dir) {
 	projects.forEach((project) => saveProject(project));
 }
 
-function filter(projName, minRating, maxRating, tags) {
-	const project = getProject(projName);
+function filter(minRating, maxRating, tags) {
+	const project = getSelectedProject();
 	project.photos.forEach((photo) => {
-		setFilterAttr(photo, minRating, maxRating, tags)
+		setFilterAttr(photo, minRating, maxRating, tags);
 		console.log("Photo: " + photo.name);
 		console.log("Rating: " + photo.rating);
 		console.log("Filter? " + photo.inFilter);
-	})
+	});
 	return projects;
 }
 
 function setFilterAttr(photo, minRating, maxRating, tags) {
 	const xmpInfo = utils.readXMP(photo);
-	if (minRating <= xmpInfo.rating && xmpInfo.rating <= maxRating  // rating matches query
-		&& tags.every(tag => xmpInfo.tags.includes(tag))) {         // tags match query
+	if (
+		xmpInfo.rating >= minRating &&
+		xmpInfo.rating <= maxRating && // rating matches query
+		(tags.length === 0 || tags.every((tag) => xmpInfo.tags.includes(tag)))
+	) {
+		// tags match query
 		photo.inFilter = true;
 	} else {
-		photo.inFilter = false;  // shouldn't be necessary but just to make sure
+		photo.inFilter = false; // shouldn't be necessary but just to make sure
 	}
 }
 
 function removeFilters() {
 	this.photos.forEach((photo) => {
 		photo.inFilter = false;
-	})
+	});
 	return projects;
 }
 
 function exportProject(project, folderPath) {
 	if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath);
-	const filterActive = project.photos.some(photo => photo.inFilter);
+	const filterActive = project.photos.some((photo) => photo.inFilter);
 
-	if (filterActive) { // if we have a filter, only export the filtered ones
+	if (filterActive) {
+		// if we have a filter, only export the filtered ones
 		for (const photo of project.photos) {
 			if (photo.inFilter) {
-				exportPhoto(photo, folderPath)
+				exportPhoto(photo, folderPath);
 			}
 		}
-	} else { // otherwise, export all
+	} else {
+		// otherwise, export all
 		for (const photo of project.photos) {
-			exportPhoto(photo, folderPath)
+			exportPhoto(photo, folderPath);
 		}
 	}
 }
@@ -413,17 +419,17 @@ function exportPhoto(photo, folderPath) {
 	const exportRawPath = path.join(folderPath, photo.name);
 	fs.copyFile(photo.destPath, exportRawPath, (err) => {
 		if (err) {
-			console.error('Error copying the file: ' + photo.name, err);
+			console.error("Error copying the file: " + photo.name, err);
 		}
-		console.log(photo.name + ' exported to ' + exportRawPath);
+		console.log(photo.name + " exported to " + exportRawPath);
 	});
 
 	const exportXMPPath = path.join(folderPath, path.basename(photo.xmpPath));
 	fs.copyFile(photo.xmpPath, exportXMPPath, (err) => {
 		if (err) {
-			console.error('Error copying the file: ' + photo.xmpPath, err);
+			console.error("Error copying the file: " + photo.xmpPath, err);
 		}
-		console.log(path.basename(photo.xmpPath) + ' exported to ' + exportXMPPath);
+		console.log(path.basename(photo.xmpPath) + " exported to " + exportXMPPath);
 	});
 }
 
@@ -467,5 +473,5 @@ module.exports = {
 	setFilterAttr,
 	removeFilters,
 	exportProject,
-	exportPhoto
+	exportPhoto,
 };

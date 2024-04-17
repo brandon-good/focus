@@ -2,16 +2,22 @@ import { useEffect, useState } from "react";
 import Preview from "./Preview";
 import ProjectSettings from "./ProjectSettings";
 import "./Projects.css";
+import AddIcon from "@mui/icons-material/Add";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import Chip from "@mui/material/Chip";
 import CloseIcon from "@mui/icons-material/Close";
 import HomeIcon from "@mui/icons-material/Home";
 import NewProjectMenu from "./NewProjectMenu";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import Button from "@mui/material/Button";
+import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Skeleton from "@mui/material/Skeleton";
+import Slider from "@mui/material/Slider";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
+import TextField from "@mui/material/TextField";
+import { HdrPlusTwoTone } from "@mui/icons-material";
 
 export default function Projects() {
 	const [projects, setProjects] = useState([]);
@@ -21,6 +27,16 @@ export default function Projects() {
 	const [expanded, setExpanded] = useState(false);
 	const [loaded, setLoaded] = useState(false);
 
+	const [ratings, setRatings] = useState([0, 5]);
+	const [tag, setTag] = useState("");
+	const [tags, setTags] = useState([]);
+
+	useEffect(() => {
+		window.ipcRenderer
+			.invoke("filter-photos", ratings[0], ratings[1], tags)
+			.then((newProjects) => setProjects([...newProjects]));
+	}, [ratings, tags]);
+
 	if (
 		loaded &&
 		(projects.length === 0 || projects.every((project) => !project.selected))
@@ -29,13 +45,13 @@ export default function Projects() {
 	}
 
 	useEffect(() => {
-		window.ipcRenderer
-			.invoke("get-projects")
-			.then((newProjects) => setProjects([...newProjects]));
-		window.ipcRenderer.on("update-projects", (newProjects) => {
-			setProjects([...newProjects]);
+		window.ipcRenderer.invoke("get-projects").then((newProjects) => {
 			setLoaded(true);
+			setProjects([...newProjects]);
 		});
+		window.ipcRenderer.on("update-projects", (newProjects) =>
+			setProjects([...newProjects])
+		);
 	}, []);
 
 	useEffect(() => {
@@ -113,46 +129,100 @@ export default function Projects() {
 				</header>
 				<div id="project-container">
 					<div
-						id="preview-sidebar"
+						id="preview-sidebar-container"
 						style={{ width: expanded ? "300%" : "15rem" }}
 					>
-						{projects[projectIndex].photos.map((photo) =>
-							!photo.loading ? (
-								<Preview
-									expanded={expanded}
-									key={photo.name}
-									photo={photo}
-									setProjects={setProjects}
+						<div id="filter-container">
+							<span>Filter</span>
+							<Divider />
+							<div>
+								<span>{`${
+									ratings[0] === ratings[1]
+										? ratings[0]
+										: `${ratings[0]}-${ratings[1]}`
+								} stars`}</span>
+								<Slider
+									max={5}
+									min={0}
+									onChange={(e) => setRatings(e.target.value)}
+									value={ratings}
 								/>
-							) : (
-								<div className="preview" key={photo.name}>
-									<Skeleton sx={{ height: "1rem" }} variant="rounded" />
-									<Skeleton sx={{ height: "7rem" }} variant="rounded" />
-									<div className="skeleton-rating-container">
-										<Skeleton
-											sx={{ height: "1rem", width: "1rem" }}
-											variant="circular"
-										/>
-										<Skeleton
-											sx={{ height: "1rem", width: "1rem" }}
-											variant="circular"
-										/>
-										<Skeleton
-											sx={{ height: "1rem", width: "1rem" }}
-											variant="circular"
-										/>
-										<Skeleton
-											sx={{ height: "1rem", width: "1rem" }}
-											variant="circular"
-										/>
-										<Skeleton
-											sx={{ height: "1rem", width: "1rem" }}
-											variant="circular"
-										/>
+							</div>
+							<Divider />
+							<div>
+								{tags.length > 0 && (
+									<div className="tags-container">
+										{tags.map((photoTag) => (
+											<Chip
+												label={photoTag}
+												onDelete={() =>
+													setTags(tags.filter((curTag) => curTag !== photoTag))
+												}
+											/>
+										))}
 									</div>
+								)}
+								<div className="add-tag-container">
+									<TextField
+										inputProps={{ style: { fontSize: "0.9rem" } }}
+										onChange={(e) => setTag(e.target.value)}
+										placeholder="Add tag"
+										value={tag}
+										variant="standard"
+									/>
+									<IconButton
+										onClick={() => {
+											setTags([...tags, tag]);
+											setTag("");
+										}}
+										size="small"
+									>
+										<AddIcon fontSize="small" />
+									</IconButton>
 								</div>
-							)
-						)}
+							</div>
+						</div>
+						<div id="preview-sidebar">
+							{projects[projectIndex].photos.map((photo) =>
+								!photo.loading ? (
+									photo.inFilter && (
+										<Preview
+											expanded={expanded}
+											key={photo.name}
+											photo={photo}
+											setProjects={setProjects}
+										/>
+									)
+								) : (
+									<div className="preview" key={photo.name}>
+										<Skeleton sx={{ height: "1rem" }} variant="rounded" />
+										<Skeleton sx={{ height: "7rem" }} variant="rounded" />
+										<div className="skeleton-rating-container">
+											<Skeleton
+												sx={{ height: "1rem", width: "1rem" }}
+												variant="circular"
+											/>
+											<Skeleton
+												sx={{ height: "1rem", width: "1rem" }}
+												variant="circular"
+											/>
+											<Skeleton
+												sx={{ height: "1rem", width: "1rem" }}
+												variant="circular"
+											/>
+											<Skeleton
+												sx={{ height: "1rem", width: "1rem" }}
+												variant="circular"
+											/>
+											<Skeleton
+												sx={{ height: "1rem", width: "1rem" }}
+												variant="circular"
+											/>
+										</div>
+									</div>
+								)
+							)}
+						</div>
 					</div>
 					<div id="preview-selected">
 						<IconButton onClick={() => setExpanded(!expanded)} size="large">

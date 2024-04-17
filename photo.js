@@ -47,8 +47,8 @@ function readXMPUpdateAttrs(photo) {
 	const xmpInfo = utils.readXMP(photo);
 
 	// update photo obj with xmp info
-	photo.rating = xmpInfo.rating;
-	photo.tags = xmpInfo.tags;
+	photo.rating = structuredClone(xmpInfo.rating);
+	photo.tags = structuredClone(xmpInfo.tags);
 
 	return xmpInfo;
 }
@@ -96,7 +96,6 @@ function toggleTag(photo, tag) {
 		addTag(photo, tag);
 	}
 }
-
 
 module.exports = {
 	Photo,
