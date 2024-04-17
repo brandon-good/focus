@@ -6,14 +6,23 @@
 	"main": "main.js",
 	"scripts": {
 		"start": "concurrently \"electron .\" \"react-scripts start\"",
+		"start-electron": "export ELECTRON_START_URL=http://localhost:3000 && electron .",
 		"build": "react-scripts build",
 		"test": "react-scripts test",
-		"eject": "react-scripts eject"
+		"eject": "react-scripts eject",
+		"package-linux":   "electron-builder build --linux -c.extraMetadata.main=build/electron.js --publish never",
+		"package-mac":     "electron-builder build --mac   -c.extraMetadata.main=build/electron.js --publish never",
+		"package-windows": "electron-builder build --win   -c.extraMetadata.main=build/electron.js --publish never",
+		"publish-linux":   "electron-builder build --linux --publish always",
+		"publish-mac":     "electron-builder build --mac   --publish always",
+		"publish-windows": "electron-builder build --win   --publish always",
+		"make": "electron-forge make"
 	},
 	"devDependencies": {
 		"@babel/plugin-proposal-private-property-in-object": "^7.21.11",
 		"concurrently": "^8.2.2",
-		"electron": "^28.2.5",
+		"electron": "^28.3.0",
+		"electron-builder": "^24.13.3",
 		"module": "./projects.js"
 	},
 	"dependencies": {
@@ -32,6 +41,25 @@
 		"react-router-dom": "^6.22.2",
 		"react-scripts": "5.0.1",
 		"trash": "^7.2.0"
+	},
+	"build": {
+		"files": [
+			"build/**/*",
+			"./*.js",
+			"./src/*.js",
+			"./src/*.css",
+			"./src/fonts/**/*",
+			"node_modules/**/*"
+		],
+		"extraMetadata": {
+			"main": "./main.js"
+		},
+		"publish": {
+			"provider": "github",
+			"private": true,
+			"owner": "Brandon Good"
+		},
+		"extends": null
 	},
 	"eslintConfig": {
 		"extends": [
