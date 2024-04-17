@@ -17,7 +17,6 @@ import Slider from "@mui/material/Slider";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
-import { HdrPlusTwoTone } from "@mui/icons-material";
 
 export default function Projects() {
 	const [projects, setProjects] = useState([]);
