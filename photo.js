@@ -4,6 +4,7 @@ const utils = require("./utils");
 
 // External imports
 const path = require("node:path");
+const trash = require("trash");
 
 class Photo {
 	constructor(name, srcPath, destPath, previewPath, previewPathURL, xmpPath) {
@@ -83,6 +84,71 @@ function removeTag(name, tag) {
 	return proj.getProjects();
 }
 
+function softDeletePhoto(photoName) {
+	console.log('soft deleting: ' + photoName)
+	const project = proj.getSelectedProject();
+	const photo = project.photos.find((p) => p.name === photoName)
+	photo.deleted = true
+	return proj.getProjects();
+}
+
+function softRestorePhoto(photoName) {
+	const project = proj.getSelectedProject();
+	const photo = project.photos.find((p) => p.name === photoName)
+	photo.deleted = false
+	return proj.getProjects();
+}
+
+function hardDeletePhotos() {
+	const project = proj.getSelectedProject();
+	// given a project, truly delete all of the photos
+	// that have the photo.delete field set to true
+	const deletedPhotos = project.photos.filter((p) => p.deleted === true)
+	for (const photo of deletedPhotos) {
+		removePhoto(project, photo.name)
+	}
+	return proj.getProject();
+}
+
+function removePhoto(photoName) {
+	const project = proj.getSelectedProject();
+	// delete the xmp, 
+	// delete the raw photo from dest dir
+	// delete the preview
+	//const project = getSelectedProject();
+	console.log("deleting photo " + photoName + " from project " + project.name);
+	const photo = project.photos.find((photo) => photo.name === photoName);
+	const photoIndex = project.photos.indexOf(photo);
+
+	if (photoIndex === -1) {
+		throw Error("photo " + photoName + " does not exist.");
+	} else if (photoIndex > -1) {
+		project.photos.splice(photoIndex, 1);
+	}
+
+	photo.deleted = true;
+
+	console.log(photo.destPath)
+	console.log(photo.previewPath)
+	console.log(photo.xmpPath)
+	try {
+		(async () => {
+			await trash([photo.destPath, photo.previewPath, photo.xmpPath]);
+		})();
+	} catch (error) {
+		console.log(error);
+		console.log("failed to fully delete photo.");
+	}
+
+	const selectedProject = proj.getSelectedProject();
+	if (selectedProject.photos.length === 0) {
+		proj.deleteSelectedProject();
+	} else if (selectedProject.photos.every((photo) => !photo.selected)) {
+		selectedProject.photos[0].selected = true;
+	}
+	return proj.getProjects();
+}
+
 // not sure if we need hasTag and toggleTag?
 
 function hasTag(photo, tag) {
@@ -104,4 +170,8 @@ module.exports = {
 	addTag,
 	removeTag,
 	toggleTag,
+	softDeletePhoto,
+	softRestorePhoto,
+	hardDeletePhotos,
+	removePhoto,
 };

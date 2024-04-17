@@ -295,7 +295,7 @@ ipcMain.handle("remove-tag", (e, name, tag) => photoTools.removeTag(name, tag));
 
 // TODO set deletePhoto to either soft or hard or whatever we want it to be.
 // Just "deletePhoto" doesn't exist anymore
-// ipcMain.handle("delete-photo", (e, name) => proj.deletePhoto(name));
+ipcMain.handle("delete-photo", (e, name) => photoTools.removePhoto(name));
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

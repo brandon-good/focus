@@ -34,6 +34,9 @@ function handle(e, input, photo) {
 		case "(":
 		case ")":
 			photoTools.removeTag(photo.name, translateKeyToTag(keyPress));
+			break;
+		case "backspace":
+			photoTools.softDeletePhoto(photo.name);
 		default:
 			break;
 	}
