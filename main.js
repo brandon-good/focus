@@ -162,7 +162,7 @@ ipcMain.on("open-project", async (e, name) => {
 				path.join(project.filepath, utils.PREVIEW_FOLDER_NAME),
 				[photo.destPath]
 			);
-			photoTools.generateEmptyXMP(photo);
+			utils.generateEmptyXMP(photo);
 
 			photo.loading = false;
 			mainWindow.webContents.send("update-projects", proj.getProjects());
