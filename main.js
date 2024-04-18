@@ -114,6 +114,47 @@ function uninstall() {
 	fs.unlinkSync(path.join(userdata_dir, install_dir_filename));
 }
 
+async function validate(project) {
+	const photoFiles =
+		fs.readdirSync(project.destDir)
+			.filter(
+				(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
+			);
+
+	// check that all of the files in the directory have photo objects
+	for (const file of photoFiles) {
+		const baseName = path.basename(file, path.extname(file)) + ".jpg";
+		if (!project.photos.some(photo => photo.baseName === baseName)) {
+			console.log("New photo detected. Adding to object.")
+			photoTools.addPhoto(project, baseName);
+		}
+	}
+
+	// check that all of the photo objects have the correlating raw img and XMP
+	for (const photo of project.photos) {
+		// checking for photo existing. if it doesn't, remove photo obj and continue
+		if (!fs.existsSync(photo.destDir)) {
+			console.log("Photo removal detected. Updating object to match.")
+			project.photos.filter(this_photo => this_photo.name !== photo.name)
+			continue
+		}
+
+		// if photo obj exists but XMP doesn't, regenerate XMP
+		if (!fs.existsSync(photo.xmpPath)) {
+			console.log("No XMP file found for photo. Creating a blank one.");
+			utils.generateEmptyXMP(photo)
+		}
+		// if photo obj exists but preview doesn't, regenerate preview
+		if (!fs.existsSync(path.join(project.filepath, utils.PREVIEW_FOLDER_NAME, path.basename(name, path.extname(name)) + ".jpg"))) {
+			console.log("No preview file found for photo. Regenerating.");
+			await proj.generateJPGPreviews(
+				path.join(project.filepath, utils.PREVIEW_FOLDER_NAME),
+				[ path.join(photo.destDir) ]
+			);
+		}
+	}
+}
+
 // IPC HANDLERS
 
 ipcMain.handle("open-dialog", async (e, configInstall, buttonLabel, title) => {
@@ -172,6 +213,7 @@ ipcMain.on("open-project", async (e, name) => {
 		project.loading = false;
 		mainWindow.webContents.send("update-projects", proj.getProjects());
 	}
+	validate(project).then(r => console.log("Project is up to date with file system."));
 });
 
 ipcMain.handle("close-selected-project", () => proj.closeSelectedProject());
