@@ -342,11 +342,18 @@ ipcMain.handle("delete-photo", (e, name) => photoTools.removePhoto(name));
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on("window-all-closed", function () {
-	while (proj.projectIsCopying) ;  // do nothing while we still copy
-	// this will keep windows closed but the app running
 	
 	// if (!utils.isMac)
 	app.quit();
+	exitApp();
+});
+
+function exitApp() {
+	if (proj.projectIsCopying()) {
+		setTimeout(() => {exitApp()}, 1000);
+		return;
+	}
+
 	proj.closeAllProjects();
 	proj.saveUserData(install_dir);
-});
+}
