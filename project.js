@@ -418,4 +418,5 @@ module.exports = {
 	removeFilters,
 	exportProject,
 	exportPhoto,
+	projectIsCopying,
 };
