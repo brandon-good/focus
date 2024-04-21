@@ -18,6 +18,7 @@ const fs = require("fs");
 const console = require("console");
 const path = require("node:path");
 const util = require("util");
+const {SONY_RAW_EXTENSION} = require("./utils");
 
 // File-local constants
 const userdata_dir = app.getPath("userData");
@@ -115,27 +116,49 @@ function uninstall() {
 }
 
 async function validate(project) {
+	const source = project.srcDir ? project.srcDir : project.destDir
 	const photoFiles =
-		fs.readdirSync(project.destDir)
+		fs.readdirSync(source)
 			.filter(
 				(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
 			);
 
 	// check that all of the files in the directory have photo objects
 	for (const file of photoFiles) {
-		const baseName = path.basename(file, path.extname(file)) + ".jpg";
-		if (!project.photos.some(photo => photo.baseName === baseName)) {
+		const baseName = path.basename(file, path.extname(file));
+		const fileName = baseName + utils.SONY_RAW_EXTENSION
+		if (!project.photos.some(photo => photo.name === fileName)) {
 			console.log("New photo detected. Adding to object.")
-			photoTools.addPhoto(project, baseName);
+			photoTools.addPhoto(project, fileName);
+			if (project.srcDir) {
+				await copyFiles(project.srcDir, project.destDir, [file])
+			}
 		}
 	}
 
 	// check that all of the photo objects have the correlating raw img and XMP
 	for (const photo of project.photos) {
+		const photoSource = project.srcDir ? project.srcDir : project.destDir;
 		// checking for photo existing. if it doesn't, remove photo obj and continue
-		if (!fs.existsSync(photo.destDir)) {
-			console.log("Photo removal detected. Updating object to match.")
-			project.photos.filter(this_photo => this_photo.name !== photo.name)
+		if (!fs.existsSync(photoSource)) {
+			console.log("Photo removal detected. Updating object to match.");
+
+			const photosToKeep = [];
+			for (let i = 0; i < project.photos.length; i++) {
+				if (project.photos[i].destPath !== photo.destPath) {
+					photosToKeep.push(project.photos[i]);
+				}
+			}
+			project.photos = photosToKeep;
+			console.log(project.photos);
+
+			fs.unlinkSync(photo.previewPath);
+			fs.unlinkSync(photo.xmpPath);
+			if (photo.srcPath) {
+				fs.unlinkSync(photo.destPath);
+			}
+
+			mainWindow.webContents.send("update-projects", proj.getProjects());
 			continue
 		}
 
@@ -144,13 +167,17 @@ async function validate(project) {
 			console.log("No XMP file found for photo. Creating a blank one.");
 			utils.generateEmptyXMP(photo)
 		}
+
 		// if photo obj exists but preview doesn't, regenerate preview
-		if (!fs.existsSync(path.join(project.filepath, utils.PREVIEW_FOLDER_NAME, path.basename(name, path.extname(name)) + ".jpg"))) {
+		if (!fs.existsSync(photo.previewPath)) {
 			console.log("No preview file found for photo. Regenerating.");
 			await proj.generateJPGPreviews(
 				path.join(project.filepath, utils.PREVIEW_FOLDER_NAME),
-				[ path.join(photo.destDir) ]
+				[photo.destPath]
 			);
+			photo.loading = false;
+			photo.inFilter = true;
+			mainWindow.webContents.send("update-projects", proj.getProjects());
 		}
 	}
 }
@@ -213,7 +240,7 @@ ipcMain.on("open-project", async (e, name) => {
 		project.loading = false;
 		mainWindow.webContents.send("update-projects", proj.getProjects());
 	}
-	validate(project).then(r => console.log("Project is up to date with file system."));
+	await validate(project);
 });
 
 ipcMain.handle("close-selected-project", () => proj.closeSelectedProject());
