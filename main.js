@@ -116,9 +116,8 @@ function uninstall() {
 }
 
 async function validate(project) {
-	const source = project.srcDir ? project.srcDir : project.destDir
 	const photoFiles =
-		fs.readdirSync(source)
+		fs.readdirSync(project.destDir)
 			.filter(
 				(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
 			);
@@ -130,33 +129,24 @@ async function validate(project) {
 		if (!project.photos.some(photo => photo.name === fileName)) {
 			console.log("New photo detected. Adding to object.")
 			photoTools.addPhoto(project, fileName);
-			if (project.srcDir) {
-				await copyFiles(project.srcDir, project.destDir, [file])
-			}
 		}
 	}
 
 	// check that all of the photo objects have the correlating raw img and XMP
-	for (const photo of project.photos) {
-		const photoSource = project.srcDir ? project.srcDir : project.destDir;
+	// for (const photo of project.photos) {
+	for (let i = 0; i < project.photos.length; i++) {
+		let photo = project.photos[i]
 		// checking for photo existing. if it doesn't, remove photo obj and continue
-		if (!fs.existsSync(photoSource)) {
+		if (!fs.existsSync(photo.destPath)) {
 			console.log("Photo removal detected. Updating object to match.");
 
-			const photosToKeep = [];
-			for (let i = 0; i < project.photos.length; i++) {
-				if (project.photos[i].destPath !== photo.destPath) {
-					photosToKeep.push(project.photos[i]);
-				}
-			}
-			project.photos = photosToKeep;
+			project.photos.splice(i, 1);
+			i--;
+			console.log("After removal: ");
 			console.log(project.photos);
 
 			fs.unlinkSync(photo.previewPath);
 			fs.unlinkSync(photo.xmpPath);
-			if (photo.srcPath) {
-				fs.unlinkSync(photo.destPath);
-			}
 
 			mainWindow.webContents.send("update-projects", proj.getProjects());
 			continue
@@ -180,6 +170,8 @@ async function validate(project) {
 			mainWindow.webContents.send("update-projects", proj.getProjects());
 		}
 	}
+	console.log("After loop: ");
+	console.log(project.photos);
 }
 
 // IPC HANDLERS
