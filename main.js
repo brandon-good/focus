@@ -252,11 +252,11 @@ ipcMain.handle("filter-photos", (e, minRating, maxRating, tags) =>
 	proj.filter(minRating, maxRating, tags)
 );
 
-ipcMain.handle("export-project", (e, folderPath) => {
+ipcMain.handle("export-project", async (e, folderPath) => {
 	const project = proj.getSelectedProject();
 	project.exporting = true;
 	mainWindow.webContents.send("update-projects", proj.getProjects());
-	proj.exportProject(project, folderPath);
+	await proj.exportProject(project, folderPath);
 	project.exporting = false;
 	return proj.getProjects();
 });
