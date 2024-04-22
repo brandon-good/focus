@@ -6,6 +6,7 @@ const path = require("node:path");
 const fs = require("fs");
 const console = require("console");
 const extractd = require("extractd");
+const util = require("util");
 
 let projects = [];
 
@@ -347,7 +348,7 @@ function removeFilters() {
 	return projects;
 }
 
-function exportProject(project, folderPath) {
+async function exportProject(project, folderPath) {
 	if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath);
 	const filterActive = project.photos.some((photo) => photo.inFilter);
 
@@ -355,33 +356,34 @@ function exportProject(project, folderPath) {
 		// if we have a filter, only export the filtered ones
 		for (const photo of project.photos) {
 			if (photo.inFilter) {
-				exportPhoto(photo, folderPath);
+				await exportPhoto(photo, folderPath);
 			}
 		}
 	} else {
 		// otherwise, export all
 		for (const photo of project.photos) {
-			exportPhoto(photo, folderPath);
+			await exportPhoto(photo, folderPath);
 		}
 	}
 }
 
-function exportPhoto(photo, folderPath) {
+const copyFilePromise = util.promisify(fs.copyFile);
+async function exportPhoto(photo, folderPath) {
 	const exportRawPath = path.join(folderPath, photo.name);
-	fs.copyFile(photo.destPath, exportRawPath, (err) => {
-		if (err) {
-			console.error("Error copying the file: " + photo.name, err);
-		}
+	try {
+		await copyFilePromise(photo.destPath, exportRawPath);
 		console.log(photo.name + " exported to " + exportRawPath);
-	});
+	} catch (err) {
+		console.error("Error copying the file: " + photo.name, err);
+	}
 
 	const exportXMPPath = path.join(folderPath, path.basename(photo.xmpPath));
-	fs.copyFile(photo.xmpPath, exportXMPPath, (err) => {
-		if (err) {
-			console.error("Error copying the file: " + photo.xmpPath, err);
-		}
+	try {
+		await copyFilePromise(photo.xmpPath, exportXMPPath);
 		console.log(path.basename(photo.xmpPath) + " exported to " + exportXMPPath);
-	});
+	} catch (err) {
+		console.error("Error copying the file: " + photo.xmpPath, err);
+	}
 }
 
 module.exports = {
