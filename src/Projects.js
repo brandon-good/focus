@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Preview from "./Preview";
 import ProjectSettings from "./ProjectSettings";
+import Status from "./Status";
 import "./Projects.css";
 import AddIcon from "@mui/icons-material/Add";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -120,10 +121,29 @@ export default function Projects() {
 						<NewProjectMenu projects={projects} setProjects={setProjects} />
 					</div>
 					<div>
-						<Button variant="contained" endIcon={<OpenInNewIcon />}>
+						<Status projects={projects} />
+						<ProjectSettings projects={projects} setProjects={setProjects} />
+						<Button
+							endIcon={<OpenInNewIcon />}
+							onClick={() =>
+								window.ipcRenderer
+									.invoke(
+										"open-dialog",
+										false,
+										"Export Here",
+										"Choose Export Directory"
+									)
+									.then((folderPath) => {
+										if (folderPath)
+											window.ipcRenderer
+												.invoke("export-project", folderPath)
+												.then((newProjects) => setProjects([...newProjects]));
+									})
+							}
+							variant="contained"
+						>
 							Export
 						</Button>
-						<ProjectSettings projects={projects} setProjects={setProjects} />
 					</div>
 				</header>
 				<div id="project-container">

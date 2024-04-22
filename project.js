@@ -21,6 +21,7 @@ class Project {
 		this.photos = [];
 		this.loading = true;
 		this.copying = true;
+		this.exporting = false;
 	}
 }
 
@@ -111,8 +112,7 @@ function closeAllProjects() {
 }
 
 function projectIsCopying() {
-	for (const project of projects) 
-		if (project.copying) return true;
+	for (const project of projects) if (project.copying) return true;
 	return false;
 }
 

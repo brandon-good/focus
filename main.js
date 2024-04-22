@@ -18,7 +18,7 @@ const fs = require("fs");
 const console = require("console");
 const path = require("node:path");
 const util = require("util");
-const {SONY_RAW_EXTENSION} = require("./utils");
+const { SONY_RAW_EXTENSION } = require("./utils");
 
 // File-local constants
 const userdata_dir = app.getPath("userData");
@@ -116,18 +116,18 @@ function uninstall() {
 }
 
 async function validate(project) {
-	const photoFiles =
-		fs.readdirSync(project.destDir)
-			.filter(
-				(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
-			);
+	const photoFiles = fs
+		.readdirSync(project.destDir)
+		.filter(
+			(file) => path.extname(file).toUpperCase() === utils.SONY_RAW_EXTENSION
+		);
 
 	// check that all of the files in the directory have photo objects
 	for (const file of photoFiles) {
 		const baseName = path.basename(file, path.extname(file));
-		const fileName = baseName + utils.SONY_RAW_EXTENSION
-		if (!project.photos.some(photo => photo.name === fileName)) {
-			console.log("New photo detected. Adding to object.")
+		const fileName = baseName + utils.SONY_RAW_EXTENSION;
+		if (!project.photos.some((photo) => photo.name === fileName)) {
+			console.log("New photo detected. Adding to object.");
 			photoTools.addPhoto(project, fileName);
 		}
 	}
@@ -135,7 +135,7 @@ async function validate(project) {
 	// check that all of the photo objects have the correlating raw img and XMP
 	// for (const photo of project.photos) {
 	for (let i = 0; i < project.photos.length; i++) {
-		let photo = project.photos[i]
+		let photo = project.photos[i];
 		// checking for photo existing. if it doesn't, remove photo obj and continue
 		if (!fs.existsSync(photo.destPath)) {
 			console.log("Photo removal detected. Updating object to match.");
@@ -149,13 +149,13 @@ async function validate(project) {
 			fs.unlinkSync(photo.xmpPath);
 
 			mainWindow.webContents.send("update-projects", proj.getProjects());
-			continue
+			continue;
 		}
 
 		// if photo obj exists but XMP doesn't, regenerate XMP
 		if (!fs.existsSync(photo.xmpPath)) {
 			console.log("No XMP file found for photo. Creating a blank one.");
-			utils.generateEmptyXMP(photo)
+			utils.generateEmptyXMP(photo);
 		}
 
 		// if photo obj exists but preview doesn't, regenerate preview
@@ -252,9 +252,14 @@ ipcMain.handle("filter-photos", (e, minRating, maxRating, tags) =>
 	proj.filter(minRating, maxRating, tags)
 );
 
-ipcMain.handle("export-project", (e, name, folderPath) =>
-	proj.exportProject(proj.getProject(name), folderPath)
-);
+ipcMain.handle("export-project", (e, folderPath) => {
+	const project = proj.getSelectedProject();
+	project.exporting = true;
+	mainWindow.webContents.send("update-projects", proj.getProjects());
+	proj.exportProject(project, folderPath);
+	project.exporting = false;
+	return proj.getProjects();
+});
 
 ipcMain.handle("get-open-projects", () => proj.getOpenProjects());
 
@@ -300,8 +305,7 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 		const photoObj = newProj.photos[i];
 
 		// do not copy files if we are creating a project from existing destination
-		if (srcDir) 
-			await copyFiles(srcDir, destDir, [file]);
+		if (srcDir) await copyFiles(srcDir, destDir, [file]);
 
 		await proj.generateJPGPreviews(
 			path.join(newProj.filepath, utils.PREVIEW_FOLDER_NAME),
@@ -361,7 +365,6 @@ ipcMain.handle("delete-photo", (e, name) => photoTools.removePhoto(name));
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on("window-all-closed", function () {
-	
 	// if (!utils.isMac)
 	app.quit();
 	exitApp();
@@ -369,7 +372,9 @@ app.on("window-all-closed", function () {
 
 function exitApp() {
 	if (proj.projectIsCopying()) {
-		setTimeout(() => {exitApp()}, 1000);
+		setTimeout(() => {
+			exitApp();
+		}, 1000);
 		return;
 	}
 
