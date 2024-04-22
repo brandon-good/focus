@@ -128,6 +128,7 @@ function newProject(name, srcDir, destDir, installDir) {
 function projectFromJson(json) {
 	let newProj = JSON.parse(json);
 	if (!newProj.archived) createProjectDir(newProj);
+	newProj.copying = false;
 
 	return newProj;
 }
@@ -299,6 +300,8 @@ function loadProjects(install_dir) {
 			return "new-project";
 		} else {
 			projects = userProjectsFromJson(content);
+			// upon loading the projects, none should be marked as copying, just in case one was accidentally left that way
+			for (const project of projects) project.copying = false;
 			return projects.filter((project) => project.open).length > 0
 				? "projects"
 				: "home";

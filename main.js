@@ -314,12 +314,20 @@ ipcMain.handle("create-project", async (e, name, srcDir, destDir) => {
 		utils.generateEmptyXMP(photoObj);
 
 		photoObj.loading = false;
-		mainWindow.webContents.send("update-projects", proj.getProjects());
+		try {
+			mainWindow.webContents.send("update-projects", proj.getProjects());
+		} catch (error) {
+			console.log("cannot update front end. app is likely closed");
+		}
 	}
 
 	newProj.loading = false;
 	newProj.copying = false;
-	mainWindow.webContents.send("update-projects", proj.getProjects()); // this is to mark the copies icon as finished
+	try {
+		mainWindow.webContents.send("update-projects", proj.getProjects()); // this is to mark the copies icon as finished
+	} catch (error) {
+		console.log("cannot update front end. app is likely closed");
+	}
 	const endCopy = new Date();
 	const copyDiff = endCopy - endPhotoAdd;
 
@@ -364,20 +372,19 @@ ipcMain.handle("delete-photo", (e, name) => photoTools.removePhoto(name));
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
-app.on("window-all-closed", function () {
+app.on("window-all-closed", async function () {
 	// if (!utils.isMac)
+	await exitApp();
 	app.quit();
-	exitApp();
 });
 
-function exitApp() {
-	if (proj.projectIsCopying()) {
-		setTimeout(() => {
-			exitApp();
-		}, 1000);
-		return;
+async function exitApp() {
+	while (proj.projectIsCopying()) {
+		console.log("still copying");
+		await utils.delay(1000);
 	}
 
+	console.log("finished copying, now exiting");
 	proj.closeAllProjects();
 	proj.saveUserData(install_dir);
 }

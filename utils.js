@@ -147,6 +147,10 @@ function rmdir(dir) {
 	fs.rmdirSync(dir);
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 module.exports = {
 	readXMPFile,
 	readXMP,
@@ -156,6 +160,7 @@ module.exports = {
 	generateEmptyXMP,
 	generateXMP,
 	rmdir,
+	delay,
 
 	JSON_PROJECTS_FILENAME,
 	PREVIEW_FOLDER_NAME,
